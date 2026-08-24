@@ -1,7 +1,9 @@
-import type { RpgPlayer, RpgServiceView } from './types.js';
+import type { ClaimDailyResult, RpgPlayer, RpgServiceView } from './types.js';
 
 export const INITIAL_COINS = 100;
 export const XP_PER_LEVEL = 100;
+export const DAILY_REWARD_COINS = 100;
+export const DAILY_COOLDOWN_MS = 24 * 60 * 60 * 1000;
 
 export function xpRequiredForLevel(level: number): number {
   return level * XP_PER_LEVEL;
@@ -15,6 +17,7 @@ function createInitialPlayer(userId: string): RpgPlayer {
     coins: INITIAL_COINS,
     wins: 0,
     losses: 0,
+    lastDaily: null,
   };
 }
 
@@ -53,5 +56,18 @@ export class RpgService implements RpgServiceView {
       levelsGained += 1;
     }
     return { levelsGained };
+  }
+
+  claimDaily(userId: string, now: number = Date.now()): ClaimDailyResult {
+    const player = this.getOrCreatePlayer(userId);
+    if (player.lastDaily !== null) {
+      const elapsed = now - player.lastDaily;
+      if (elapsed < DAILY_COOLDOWN_MS) {
+        return { claimed: false, remainingMs: DAILY_COOLDOWN_MS - elapsed };
+      }
+    }
+    player.lastDaily = now;
+    player.coins += DAILY_REWARD_COINS;
+    return { claimed: true, reward: DAILY_REWARD_COINS, coins: player.coins };
   }
 }
