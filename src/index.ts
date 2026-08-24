@@ -1,5 +1,6 @@
 import { connectWhatsApp } from './whatsapp/connection.js';
 import { IdentityService } from './services/identity/identity.service.js';
+import { RpgService } from './services/rpg/rpg.service.js';
 import { CommandRegistry } from './commands/registry.js';
 import { CommandDispatcher } from './commands/dispatcher.js';
 import { CommandLoader } from './commands/loader.js';
@@ -7,7 +8,8 @@ import { CommandLoader } from './commands/loader.js';
 console.log('GG Bot starting...');
 
 const registry = new CommandRegistry();
-const dispatcher = new CommandDispatcher(registry);
+const rpgService = new RpgService();
+const dispatcher = new CommandDispatcher(registry, rpgService);
 const loader = new CommandLoader(registry);
 
 try {

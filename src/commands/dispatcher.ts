@@ -1,4 +1,5 @@
 import type { WaUserIdentity } from '../services/identity/types.js';
+import type { RpgServiceView } from '../services/rpg/types.js';
 import type { CommandContext } from './types.js';
 import type { CommandRegistry } from './registry.js';
 
@@ -11,9 +12,11 @@ export interface CommandInvocation {
 
 export class CommandDispatcher {
   private readonly registry: CommandRegistry;
+  private readonly rpg: RpgServiceView;
 
-  constructor(registry: CommandRegistry) {
+  constructor(registry: CommandRegistry, rpg: RpgServiceView) {
     this.registry = registry;
+    this.rpg = rpg;
   }
 
   async handle(text: string, context: CommandInvocation): Promise<boolean> {
@@ -29,7 +32,12 @@ export class CommandDispatcher {
     const command = this.registry.get(rawName);
     if (!command) return false;
 
-    await command.execute({ args, ...context });
+    await command.execute({
+      args,
+      ...context,
+      registry: this.registry,
+      rpg: this.rpg,
+    });
     return true;
   }
 }
