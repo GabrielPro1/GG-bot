@@ -1,0 +1,27 @@
+# Dependencies
+node_modules/
+
+# Build output
+dist/
+
+# Environment variables / secrets
+.env
+.env.*
+!.env.example
+
+# WhatsApp authentication/session data
+auth/
+
+# Logs
+logs/
+*.log
+npm-debug.log*
+
+# OS files
+.DS_Store
+Thumbs.db
+Desktop.ini
+
+# Editor folders
+.vscode/
+.idea/
