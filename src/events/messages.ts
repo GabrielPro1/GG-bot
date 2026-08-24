@@ -1,12 +1,8 @@
 import { isJidStatusBroadcast, type WAMessage, type WASocket } from '@whiskeysockets/baileys';
-import { CommandDispatcher } from '../commands/dispatcher.js';
-import { pingCommand } from '../commands/ping.js';
+import type { CommandDispatcher } from '../commands/dispatcher.js';
 import type { IdentityService } from '../services/identity/identity.service.js';
 
 const TEXT_PREVIEW_MAX_LENGTH = 100;
-
-const dispatcher = new CommandDispatcher();
-dispatcher.register(pingCommand);
 
 interface MessageSummary {
   kind: string;
@@ -58,7 +54,11 @@ function extractText(message: WAMessage['message']): string | null {
   return null;
 }
 
-export function registerMessageLogger(sock: WASocket, identityService: IdentityService): void {
+export function registerMessageLogger(
+  sock: WASocket,
+  identityService: IdentityService,
+  dispatcher: CommandDispatcher,
+): void {
   sock.ev.on('messages.upsert', ({ messages, type }) => {
     for (const message of messages) {
       if (message.key.fromMe) continue;

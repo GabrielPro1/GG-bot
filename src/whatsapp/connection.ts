@@ -9,6 +9,7 @@ import pino from 'pino';
 import qrcode from 'qrcode-terminal';
 import { createAuthState } from './auth.js';
 import { registerMessageLogger } from '../events/messages.js';
+import type { CommandDispatcher } from '../commands/dispatcher.js';
 import type { IdentityService } from '../services/identity/identity.service.js';
 
 const MAX_RECONNECT_ATTEMPTS = 5;
@@ -23,19 +24,20 @@ const NON_RECOVERABLE_REASONS: ReadonlySet<number> = new Set([
 ]);
 
 export interface WhatsAppConnectionOptions {
+  identityService: IdentityService;
+  dispatcher: CommandDispatcher;
   logLevel?: string;
 }
 
 let reconnectAttempts = 0;
+let activeOptions: WhatsAppConnectionOptions | undefined;
 
 function getDisconnectStatusCode(error: Boom | Error | undefined): number | undefined {
   return error instanceof Boom ? error.output.statusCode : undefined;
 }
 
-function scheduleReconnect(
-  statusCode: number | undefined,
-  identityService: IdentityService,
-): void {
+function scheduleReconnect(statusCode: number | undefined): void {
+  if (!activeOptions) return;
   if (statusCode !== undefined && NON_RECOVERABLE_REASONS.has(statusCode)) {
     console.error(`GG Bot disconnected permanently (code ${statusCode}). Not reconnecting.`);
     if (statusCode === DisconnectReason.loggedOut) {
@@ -57,14 +59,13 @@ function scheduleReconnect(
       `(attempt ${reconnectAttempts}/${MAX_RECONNECT_ATTEMPTS})...`,
   );
   setTimeout(() => {
-    void connectWhatsApp(identityService);
+    void connectWhatsApp(activeOptions!);
   }, delay);
 }
 
-export async function connectWhatsApp(
-  identityService: IdentityService,
-  options: WhatsAppConnectionOptions = {},
-): Promise<WASocket> {
+export async function connectWhatsApp(options: WhatsAppConnectionOptions): Promise<WASocket> {
+  activeOptions = options;
+
   const logger = pino({ level: options.logLevel ?? 'warn' });
   const { state, saveCreds } = await createAuthState();
   const { version } = await fetchLatestBaileysVersion();
@@ -76,15 +77,15 @@ export async function connectWhatsApp(
     logger,
   });
 
-  identityService.setLidPnResolver(sock.signalRepository.lidMapping);
+  options.identityService.setLidPnResolver(sock.signalRepository.lidMapping);
 
   sock.ev.on('lid-mapping.update', (mapping) => {
-    identityService.recordLidPnMapping(mapping);
+    options.identityService.recordLidPnMapping(mapping);
   });
 
   sock.ev.on('creds.update', saveCreds);
 
-  registerMessageLogger(sock, identityService);
+  registerMessageLogger(sock, options.identityService, options.dispatcher);
 
   sock.ev.on('connection.update', (update) => {
     if (update.qr) {
@@ -98,7 +99,7 @@ export async function connectWhatsApp(
     }
 
     if (update.connection === 'close') {
-      scheduleReconnect(getDisconnectStatusCode(update.lastDisconnect?.error), identityService);
+      scheduleReconnect(getDisconnectStatusCode(update.lastDisconnect?.error));
     }
   });
 

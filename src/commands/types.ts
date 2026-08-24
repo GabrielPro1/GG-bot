@@ -9,5 +9,6 @@ export interface CommandContext {
 export interface Command {
   name: string;
   aliases?: readonly string[];
+  category?: string;
   execute: (context: CommandContext) => void | Promise<void>;
 }

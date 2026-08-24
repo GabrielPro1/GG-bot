@@ -1,5 +1,6 @@
-import type { Command, CommandContext } from './types.js';
 import type { WaUserIdentity } from '../services/identity/types.js';
+import type { CommandContext } from './types.js';
+import type { CommandRegistry } from './registry.js';
 
 const COMMAND_PREFIX = '/';
 
@@ -9,13 +10,10 @@ export interface CommandInvocation {
 }
 
 export class CommandDispatcher {
-  private readonly commands = new Map<string, Command>();
+  private readonly registry: CommandRegistry;
 
-  register(command: Command): void {
-    this.commands.set(command.name.toLowerCase(), command);
-    for (const alias of command.aliases ?? []) {
-      this.commands.set(alias.toLowerCase(), command);
-    }
+  constructor(registry: CommandRegistry) {
+    this.registry = registry;
   }
 
   async handle(text: string, context: CommandInvocation): Promise<boolean> {
@@ -28,7 +26,7 @@ export class CommandDispatcher {
       .filter((part) => part.length > 0);
     if (!rawName) return false;
 
-    const command = this.commands.get(rawName.toLowerCase());
+    const command = this.registry.get(rawName);
     if (!command) return false;
 
     await command.execute({ args, ...context });
