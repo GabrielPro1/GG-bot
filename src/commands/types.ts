@@ -7,6 +7,7 @@ export interface CommandContext {
   reply: (text: string) => Promise<void>;
   registry: CommandRegistryView;
   rpg: RpgServiceView;
+  mentions: readonly MentionedUser[];
 }
 
 export interface Command {
@@ -21,4 +22,9 @@ export interface Command {
 
 export interface CommandRegistryView {
   getAll(): readonly Command[];
+}
+
+export interface MentionedUser {
+  readonly jid: string;
+  readonly identity: WaUserIdentity | null;
 }

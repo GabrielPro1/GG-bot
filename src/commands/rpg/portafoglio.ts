@@ -6,18 +6,22 @@ export default {
   name: 'portafoglio',
   category: 'rpg',
   emoji: '💰',
-  description: 'Controlla le tue monete',
+  description: 'Mostra contanti e banca',
   execute: async ({ identity, rpg, reply }) => {
-    const player = rpg.getOrCreatePlayer(identity.userId);
+    const wallet = rpg.getWalletBalance(identity.userId);
+    const bank = rpg.getBankBalance(identity.userId);
 
     await reply([
       '╭━━━━━━━━━━━━━━━━━━━━━━━━━━╮',
       '┃   💰 PORTAFOGLIO   ┃',
       '╰━━━━━━━━━━━━━━━━━━━━━━━━━━╯',
       '',
-      '💰 Monete disponibili',
+      `👛 Contanti: 🪙 ${wallet}`,
+      `🏦 Banca: 🪙 ${bank}`,
       '',
-      `      🪙 ${player.coins}`,
+      '━━━━━━━━━━━━━━━━━━━━━━━━━━',
+      '',
+      `💎 Totale: 🪙 ${wallet + bank}`,
       '',
       SIGNATURE,
     ].join('\n'));

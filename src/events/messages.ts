@@ -1,5 +1,6 @@
 import { isJidStatusBroadcast, type WAMessage, type WASocket } from '@whiskeysockets/baileys';
 import type { CommandDispatcher } from '../commands/dispatcher.js';
+import type { MentionedUser } from '../commands/types.js';
 import type { IdentityService } from '../services/identity/identity.service.js';
 
 const TEXT_PREVIEW_MAX_LENGTH = 100;
@@ -7,6 +8,21 @@ const TEXT_PREVIEW_MAX_LENGTH = 100;
 interface MessageSummary {
   kind: string;
   preview?: string;
+}
+
+function extractMentionedJids(message: WAMessage['message']): readonly string[] {
+  const mentionedJid = message?.extendedTextMessage?.contextInfo?.mentionedJid;
+  return mentionedJid ?? [];
+}
+
+function resolveMentions(
+  identityService: IdentityService,
+  message: WAMessage['message'],
+): MentionedUser[] {
+  return extractMentionedJids(message).map((jid) => ({
+    jid,
+    identity: identityService.fromJid(jid),
+  }));
 }
 
 function truncateText(text: string): string {
@@ -98,6 +114,7 @@ export function registerMessageLogger(
           identity,
           reply: (replyText) =>
             sock.sendMessage(chatJid, { text: replyText }).then(() => undefined),
+          mentions: resolveMentions(identityService, message.message),
         })
         .catch((error: unknown) => {
           console.error('Failed to dispatch command:', error);

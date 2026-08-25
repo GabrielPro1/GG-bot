@@ -44,7 +44,7 @@ export default {
       '🎉 Ricompensa riscattata!',
       '',
       `🪙 +${result.reward} monete`,
-      `💰 Portafoglio: 🪙 ${result.coins}`,
+      `💰 Portafoglio: 🪙 ${result.walletCoins}`,
       '',
       '⏰ Torna domani per ritirarla',
       '   di nuovo!',

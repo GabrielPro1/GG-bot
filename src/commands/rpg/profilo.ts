@@ -2,14 +2,14 @@ import { xpRequiredForLevel } from '../../services/rpg/rpg.service.js';
 import type { Command } from '../types.js';
 
 const SIGNATURE = '╰━━━━━━━━ ✨ GG BOT ✨ ━━━━━━━━╯';
-const XP_BAR_WIDTH = 10;
+const BAR_WIDTH = 10;
 
-function renderXpBar(xp: number, needed: number): string {
+function renderBar(current: number, max: number): string {
   const filled = Math.min(
-    XP_BAR_WIDTH,
-    Math.floor((xp / Math.max(needed, 1)) * XP_BAR_WIDTH),
+    BAR_WIDTH,
+    Math.floor((current / Math.max(max, 1)) * BAR_WIDTH),
   );
-  return `${'▰'.repeat(filled)}${'▱'.repeat(XP_BAR_WIDTH - filled)}`;
+  return `${'█'.repeat(filled)}${'▱'.repeat(BAR_WIDTH - filled)}`;
 }
 
 export default {
@@ -19,6 +19,7 @@ export default {
   description: 'Mostra il tuo profilo RPG',
   execute: async ({ identity, rpg, reply }) => {
     const player = rpg.getOrCreatePlayer(identity.userId);
+    const stats = rpg.getStats(identity.userId);
     const xpNeeded = xpRequiredForLevel(player.level);
 
     await reply([
@@ -30,9 +31,18 @@ export default {
       '',
       `⭐ Livello: ${player.level}`,
       `✨ Esperienza: ${player.xp} / ${xpNeeded}`,
-      renderXpBar(player.xp, xpNeeded),
+      renderBar(player.xp, xpNeeded),
       '',
-      `💰 Monete: 🪙 ${player.coins}`,
+      `❤️ Energia: ${stats.energy} / ${stats.maxEnergy}`,
+      renderBar(stats.energy, stats.maxEnergy),
+      '',
+      `⚔️ Attacco: ${stats.attack}`,
+      `🛡️ Difesa: ${stats.defense}`,
+      `🍀 Fortuna: ${stats.luck}%`,
+      '',
+      '💰 Monete:',
+      `👛 Wallet: 🪙 ${player.walletCoins}`,
+      `🏦 Banca: 🪙 ${player.bankCoins}`,
       '',
       `⚔️ Vittorie: ${player.wins}`,
       `💀 Sconfitte: ${player.losses}`,

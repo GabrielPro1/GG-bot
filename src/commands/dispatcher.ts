@@ -1,6 +1,6 @@
 import type { WaUserIdentity } from '../services/identity/types.js';
 import type { RpgServiceView } from '../services/rpg/types.js';
-import type { CommandContext } from './types.js';
+import type { CommandContext, MentionedUser } from './types.js';
 import type { CommandRegistry } from './registry.js';
 
 const COMMAND_PREFIX = '/';
@@ -8,6 +8,7 @@ const COMMAND_PREFIX = '/';
 export interface CommandInvocation {
   identity: WaUserIdentity;
   reply: CommandContext['reply'];
+  mentions?: readonly MentionedUser[];
 }
 
 export class CommandDispatcher {
@@ -37,6 +38,7 @@ export class CommandDispatcher {
       ...context,
       registry: this.registry,
       rpg: this.rpg,
+      mentions: context.mentions ?? [],
     });
     return true;
   }
