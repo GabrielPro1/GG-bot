@@ -1,4 +1,5 @@
 import { randomUUID } from 'node:crypto';
+import type Database from 'better-sqlite3';
 import {
   isJidGroup,
   jidDecode,
@@ -47,10 +48,42 @@ export class IdentityService {
   private readonly lidToPnUsers = new Map<string, string>();
   private readonly generateUserId: () => string;
   private lidPnResolver?: LidPnResolver;
+  private readonly db: Database.Database | null;
+  private readonly stmts: {
+    selectAllIdentities: Database.Statement;
+    upsertIdentity: Database.Statement;
+    selectAllMappings: Database.Statement;
+    insertMapping: Database.Statement;
+  } | null;
 
-  constructor(options: IdentityServiceOptions = {}) {
+  constructor(options: IdentityServiceOptions = {}, db?: Database.Database) {
     this.generateUserId = options.generateUserId ?? (() => randomUUID());
     this.lidPnResolver = options.lidPnResolver;
+    this.db = db ?? null;
+
+    if (this.db) {
+      this.stmts = {
+        selectAllIdentities: this.db.prepare(
+          `SELECT user_id, lid_jid, pn_jid, username FROM identities`,
+        ),
+        upsertIdentity: this.db.prepare(
+          `INSERT INTO identities (user_id, lid_jid, pn_jid, username)
+           VALUES (@userId, @lidJid, @pnJid, @username)
+           ON CONFLICT(user_id) DO UPDATE SET
+             lid_jid = @lidJid, pn_jid = @pnJid, username = @username`,
+        ),
+        selectAllMappings: this.db.prepare(
+          `SELECT lid_user, pn_user FROM lid_pn_mappings`,
+        ),
+        insertMapping: this.db.prepare(
+          `INSERT OR IGNORE INTO lid_pn_mappings (lid_user, pn_user) VALUES (?, ?)`,
+        ),
+      };
+      this.loadIdentities();
+      this.loadMappings();
+    } else {
+      this.stmts = null;
+    }
   }
 
   setLidPnResolver(resolver: LidPnResolver): void {
@@ -102,6 +135,7 @@ export class IdentityService {
       if (!classifiedPn || !classifiedLid) continue;
       this.pnToLidUsers.set(classifiedPn.user, classifiedLid.user);
       this.lidToPnUsers.set(classifiedLid.user, classifiedPn.user);
+      this.persistMapping(classifiedLid.user, classifiedPn.user);
       const existing = this.findExisting(classifiedLid, classifiedPn);
       if (existing) {
         this.upsert(existing.userId, classifiedLid, classifiedPn, existing.username);
@@ -129,6 +163,7 @@ export class IdentityService {
     const identity = this.identities.get(userId);
     if (!identity) return false;
     identity.username = username;
+    this.persistIdentity(identity);
     return true;
   }
 
@@ -194,6 +229,57 @@ export class IdentityService {
     if (classifiedLid) this.indexByJid.set(indexKey('lid', classifiedLid.user), id);
     const classifiedPn = identity.pn ? classifyJid(identity.pn) : undefined;
     if (classifiedPn) this.indexByJid.set(indexKey('pn', classifiedPn.user), id);
+    this.persistIdentity(identity);
     return { ...identity };
+  }
+
+  private loadIdentities(): void {
+    if (!this.stmts) return;
+    const rows = this.stmts.selectAllIdentities.all() as Array<{
+      user_id: string;
+      lid_jid: string | null;
+      pn_jid: string | null;
+      username: string | null;
+    }>;
+    for (const row of rows) {
+      const identity: WaUserIdentity = {
+        userId: row.user_id,
+        lid: row.lid_jid,
+        pn: row.pn_jid,
+        username: row.username,
+      };
+      this.identities.set(identity.userId, identity);
+      const classifiedLid = identity.lid ? classifyJid(identity.lid) : undefined;
+      if (classifiedLid) this.indexByJid.set(indexKey('lid', classifiedLid.user), identity.userId);
+      const classifiedPn = identity.pn ? classifyJid(identity.pn) : undefined;
+      if (classifiedPn) this.indexByJid.set(indexKey('pn', classifiedPn.user), identity.userId);
+    }
+  }
+
+  private loadMappings(): void {
+    if (!this.stmts) return;
+    const rows = this.stmts.selectAllMappings.all() as Array<{
+      lid_user: string;
+      pn_user: string;
+    }>;
+    for (const row of rows) {
+      this.pnToLidUsers.set(row.pn_user, row.lid_user);
+      this.lidToPnUsers.set(row.lid_user, row.pn_user);
+    }
+  }
+
+  private persistIdentity(identity: WaUserIdentity): void {
+    if (!this.stmts) return;
+    this.stmts.upsertIdentity.run({
+      userId: identity.userId,
+      lidJid: identity.lid,
+      pnJid: identity.pn,
+      username: identity.username,
+    });
+  }
+
+  private persistMapping(lidUser: string, pnUser: string): void {
+    if (!this.stmts) return;
+    this.stmts.insertMapping.run(lidUser, pnUser);
   }
 }

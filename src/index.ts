@@ -23,7 +23,7 @@ try {
   console.error('[commands] initial load failed:', error);
 }
 
-const identityService = new IdentityService();
+const identityService = new IdentityService({}, db);
 
 rpgService.setNameResolver((userId) => {
   const identity = identityService.getById(userId);
