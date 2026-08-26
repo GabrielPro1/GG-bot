@@ -34,6 +34,7 @@ import type {
   UnequipResult,
   UseItemResult,
 } from './types.js';
+import { PlayerRepository } from './player.repository.js';
 
 export const INITIAL_COINS = 100;
 export const INITIAL_BANK_COINS = 0;
@@ -100,30 +101,6 @@ function computeEffectiveStats(player: RpgPlayer): PlayerStats {
   };
 }
 
-function createInitialPlayer(userId: string): RpgPlayer {
-  return {
-    userId,
-    level: 1,
-    xp: 0,
-    energy: INITIAL_ENERGY,
-    maxEnergy: INITIAL_MAX_ENERGY,
-    attack: INITIAL_ATTACK,
-    defense: INITIAL_DEFENSE,
-    luck: INITIAL_LUCK,
-    walletCoins: INITIAL_COINS,
-    bankCoins: INITIAL_BANK_COINS,
-    wins: 0,
-    losses: 0,
-    lastDaily: null,
-    robberyCooldown: null,
-    combatCooldownUntil: null,
-    huntCooldownUntil: null,
-    inventory: {},
-    equipment: { weapon: null, armor: null, accessory: null },
-    missions: {},
-  };
-}
-
 export interface AddXpResult {
   levelsGained: number;
 }
@@ -131,8 +108,12 @@ export interface AddXpResult {
 const DEFAULT_LEADERBOARD_LIMIT = 10;
 
 export class RpgService implements RpgServiceView {
-  private readonly players = new Map<string, RpgPlayer>();
+  private readonly repo: PlayerRepository;
   private nameResolver: NameResolver | null = null;
+
+  constructor(repo: PlayerRepository) {
+    this.repo = repo;
+  }
 
   setNameResolver(resolver: NameResolver): void {
     this.nameResolver = resolver;
@@ -144,7 +125,7 @@ export class RpgService implements RpgServiceView {
   }
 
   getLeaderboardByLevel(limit: number = DEFAULT_LEADERBOARD_LIMIT): readonly LeaderboardEntry[] {
-    return [...this.players.values()]
+    return this.repo.getAllPlayers()
       .sort((a, b) => b.level - a.level || b.xp - a.xp)
       .slice(0, limit)
       .map((p) => ({
@@ -158,7 +139,7 @@ export class RpgService implements RpgServiceView {
   }
 
   getLeaderboardByWins(limit: number = DEFAULT_LEADERBOARD_LIMIT): readonly LeaderboardEntry[] {
-    return [...this.players.values()]
+    return this.repo.getAllPlayers()
       .sort((a, b) => b.wins - a.wins || b.level - a.level)
       .slice(0, limit)
       .map((p) => ({
@@ -172,7 +153,7 @@ export class RpgService implements RpgServiceView {
   }
 
   getLeaderboardByWealth(limit: number = DEFAULT_LEADERBOARD_LIMIT): readonly LeaderboardEntry[] {
-    return [...this.players.values()]
+    return this.repo.getAllPlayers()
       .sort((a, b) => (b.walletCoins + b.bankCoins) - (a.walletCoins + a.bankCoins))
       .slice(0, limit)
       .map((p) => ({
@@ -186,17 +167,11 @@ export class RpgService implements RpgServiceView {
   }
 
   getOrCreatePlayer(userId: string): RpgPlayer {
-    const existing = this.players.get(userId);
-    if (existing) {
-      return existing;
-    }
-    const player = createInitialPlayer(userId);
-    this.players.set(userId, player);
-    return player;
+    return this.repo.getOrCreatePlayer(userId);
   }
 
   getPlayer(userId: string): RpgPlayer | undefined {
-    return this.players.get(userId);
+    return this.repo.getPlayer(userId);
   }
 
   getWalletBalance(userId: string): number {
@@ -209,6 +184,7 @@ export class RpgService implements RpgServiceView {
 
   addCoins(userId: string, amount: number): void {
     this.getOrCreatePlayer(userId).walletCoins += amount;
+    this.repo.savePlayer(this.getOrCreatePlayer(userId));
   }
 
   deposit(userId: string, amount: number): TransferResult {
@@ -217,6 +193,7 @@ export class RpgService implements RpgServiceView {
     if (amount > player.walletCoins) return { ok: false, error: 'insufficient_wallet' };
     player.walletCoins -= amount;
     player.bankCoins += amount;
+    this.repo.savePlayer(player);
     return { ok: true, walletCoins: player.walletCoins, bankCoins: player.bankCoins };
   }
 
@@ -226,6 +203,7 @@ export class RpgService implements RpgServiceView {
     if (amount > player.bankCoins) return { ok: false, error: 'insufficient_bank' };
     player.bankCoins -= amount;
     player.walletCoins += amount;
+    this.repo.savePlayer(player);
     return { ok: true, walletCoins: player.walletCoins, bankCoins: player.bankCoins };
   }
 
@@ -234,6 +212,7 @@ export class RpgService implements RpgServiceView {
     const player = this.getOrCreatePlayer(userId);
     if (amount > player.walletCoins) return { ok: false, error: 'insufficient_wallet' };
     player.walletCoins -= amount;
+    this.repo.savePlayer(player);
     return { ok: true, walletCoins: player.walletCoins, bankCoins: player.bankCoins };
   }
 
@@ -250,6 +229,7 @@ export class RpgService implements RpgServiceView {
     const player = this.getOrCreatePlayer(userId);
     const totalOwned = (player.inventory[item.id] ?? 0) + quantity;
     player.inventory[item.id] = totalOwned;
+    this.repo.savePlayer(player);
 
     return { ok: true, itemId: item.id, quantityAdded: quantity, totalOwned };
   }
@@ -258,25 +238,28 @@ export class RpgService implements RpgServiceView {
     const item = findItemById(itemId);
     if (!item) return { ok: false, error: 'unknown_item' };
 
-    const payment = this.spendWallet(userId, item.price);
-    if (!payment.ok) {
-      if (payment.error === 'insufficient_wallet') {
-        return {
-          ok: false,
-          error: 'insufficient_wallet',
-          item,
-          walletCoins: this.getWalletBalance(userId),
-          bankCoins: this.getBankBalance(userId),
-        };
+    return this.repo.transaction(() => {
+      const payment = this.spendWallet(userId, item.price);
+      if (!payment.ok) {
+        if (payment.error === 'insufficient_wallet') {
+          return {
+            ok: false,
+            error: 'insufficient_wallet',
+            item,
+            walletCoins: this.getWalletBalance(userId),
+            bankCoins: this.getBankBalance(userId),
+          };
+        }
+        return { ok: false, error: 'invalid_amount', item };
       }
-      return { ok: false, error: 'invalid_amount', item };
-    }
 
-    const player = this.getOrCreatePlayer(userId);
-    const quantityOwned = (player.inventory[item.id] ?? 0) + 1;
-    player.inventory[item.id] = quantityOwned;
+      const player = this.getOrCreatePlayer(userId);
+      const quantityOwned = (player.inventory[item.id] ?? 0) + 1;
+      player.inventory[item.id] = quantityOwned;
+      this.repo.savePlayer(player);
 
-    return { ok: true, item, quantityOwned, walletCoins: player.walletCoins };
+      return { ok: true, item, quantityOwned, walletCoins: player.walletCoins };
+    });
   }
 
   getStats(userId: string): PlayerStats {
@@ -288,6 +271,7 @@ export class RpgService implements RpgServiceView {
     const player = this.getOrCreatePlayer(userId);
     if (amount > player.energy) return { ok: false, error: 'insufficient_energy' };
     player.energy -= amount;
+    this.repo.savePlayer(player);
     return { ok: true, energy: player.energy, maxEnergy: player.maxEnergy };
   }
 
@@ -295,6 +279,7 @@ export class RpgService implements RpgServiceView {
     if (!isValidAmount(amount)) return { ok: false, error: 'invalid_amount' };
     const player = this.getOrCreatePlayer(userId);
     player.energy = Math.min(player.maxEnergy, player.energy + amount);
+    this.repo.savePlayer(player);
     return { ok: true, energy: player.energy, maxEnergy: player.maxEnergy };
   }
 
@@ -319,6 +304,7 @@ export class RpgService implements RpgServiceView {
     }
 
     player.equipment[slot] = item.id;
+    this.repo.savePlayer(player);
     return { ok: true, item, slot };
   }
 
@@ -335,6 +321,7 @@ export class RpgService implements RpgServiceView {
     }
 
     player.equipment[slot] = null;
+    this.repo.savePlayer(player);
     return { ok: true, item, slot };
   }
 
@@ -360,6 +347,7 @@ export class RpgService implements RpgServiceView {
     } else {
       delete player.inventory[item.id];
     }
+    this.repo.savePlayer(player);
 
     return {
       ok: true,
@@ -379,21 +367,25 @@ export class RpgService implements RpgServiceView {
       player.level += 1;
       levelsGained += 1;
     }
+    this.repo.savePlayer(player);
     return { levelsGained };
   }
 
   claimDaily(userId: string, now: number = Date.now()): ClaimDailyResult {
-    const player = this.getOrCreatePlayer(userId);
-    if (player.lastDaily !== null) {
-      const elapsed = now - player.lastDaily;
-      if (elapsed < DAILY_COOLDOWN_MS) {
-        return { claimed: false, remainingMs: DAILY_COOLDOWN_MS - elapsed };
+    return this.repo.transaction(() => {
+      const player = this.getOrCreatePlayer(userId);
+      if (player.lastDaily !== null) {
+        const elapsed = now - player.lastDaily;
+        if (elapsed < DAILY_COOLDOWN_MS) {
+          return { claimed: false, remainingMs: DAILY_COOLDOWN_MS - elapsed };
+        }
       }
-    }
-    player.lastDaily = now;
-    player.walletCoins += DAILY_REWARD_COINS;
-    this.trackMissionProgress(userId, 'daily', now);
-    return { claimed: true, reward: DAILY_REWARD_COINS, walletCoins: player.walletCoins };
+      player.lastDaily = now;
+      player.walletCoins += DAILY_REWARD_COINS;
+      this.trackMissionProgress(userId, 'daily', now);
+      this.repo.savePlayer(player);
+      return { claimed: true, reward: DAILY_REWARD_COINS, walletCoins: player.walletCoins };
+    });
   }
 
   rob(
@@ -401,50 +393,54 @@ export class RpgService implements RpgServiceView {
     victimUserId: string,
     options: RobOptions = {},
   ): RobResult {
-    const now = options.now ?? Date.now();
-    const rng = options.rng ?? Math.random;
+    return this.repo.transaction(() => {
+      const now = options.now ?? Date.now();
+      const rng = options.rng ?? Math.random;
 
-    if (thiefUserId === victimUserId) return { outcome: 'self_target' };
+      if (thiefUserId === victimUserId) return { outcome: 'self_target' };
 
-    const victim = this.players.get(victimUserId);
-    if (!victim) return { outcome: 'unknown_victim' };
+      const victim = this.repo.getPlayer(victimUserId);
+      if (!victim) return { outcome: 'unknown_victim' };
 
-    const thief = this.getOrCreatePlayer(thiefUserId);
+      const thief = this.getOrCreatePlayer(thiefUserId);
 
-    const activePenalty = thief.robberyCooldown;
-    if (activePenalty && now < activePenalty.until) {
+      const activePenalty = thief.robberyCooldown;
+      if (activePenalty && now < activePenalty.until) {
+        return {
+          outcome: 'cooldown',
+          remainingMs: activePenalty.until - now,
+          jailed: activePenalty.jailed,
+        };
+      }
+
+      const percentage =
+        Math.floor(rng() * (ROB_MAX_PERCENTAGE - ROB_MIN_PERCENTAGE + 1)) + ROB_MIN_PERCENTAGE;
+      const loot = Math.floor((victim.walletCoins * percentage) / 100);
+      if (loot <= 0 || victim.walletCoins <= 0) {
+        return { outcome: 'broke_victim' };
+      }
+
+      if (rng() >= ROB_SUCCESS_CHANCE) {
+        const penalty: RobberyPenalty = { until: now + ROB_PRISON_MS, jailed: true };
+        thief.robberyCooldown = penalty;
+        this.repo.savePlayer(thief);
+        return { outcome: 'jailed', prisonMs: ROB_PRISON_MS };
+      }
+
+      victim.walletCoins -= loot;
+      thief.walletCoins += loot;
+      thief.robberyCooldown = { until: now + ROB_SUCCESS_COOLDOWN_MS, jailed: false };
+      this.repo.savePlayer(thief);
+      this.trackMissionProgress(thiefUserId, 'robbery', now);
+
       return {
-        outcome: 'cooldown',
-        remainingMs: activePenalty.until - now,
-        jailed: activePenalty.jailed,
+        outcome: 'success',
+        loot,
+        percentage,
+        thiefWalletCoins: thief.walletCoins,
+        cooldownMs: ROB_SUCCESS_COOLDOWN_MS,
       };
-    }
-
-    const percentage =
-      Math.floor(rng() * (ROB_MAX_PERCENTAGE - ROB_MIN_PERCENTAGE + 1)) + ROB_MIN_PERCENTAGE;
-    const loot = Math.floor((victim.walletCoins * percentage) / 100);
-    if (loot <= 0 || victim.walletCoins <= 0) {
-      return { outcome: 'broke_victim' };
-    }
-
-    if (rng() >= ROB_SUCCESS_CHANCE) {
-      const penalty: RobberyPenalty = { until: now + ROB_PRISON_MS, jailed: true };
-      thief.robberyCooldown = penalty;
-      return { outcome: 'jailed', prisonMs: ROB_PRISON_MS };
-    }
-
-    victim.walletCoins -= loot;
-    thief.walletCoins += loot;
-    thief.robberyCooldown = { until: now + ROB_SUCCESS_COOLDOWN_MS, jailed: false };
-    this.trackMissionProgress(thiefUserId, 'robbery', now);
-
-    return {
-      outcome: 'success',
-      loot,
-      percentage,
-      thiefWalletCoins: thief.walletCoins,
-      cooldownMs: ROB_SUCCESS_COOLDOWN_MS,
-    };
+    });
   }
 
   startCombat(
@@ -452,171 +448,178 @@ export class RpgService implements RpgServiceView {
     defenderUserId: string,
     options: { now?: number; randomSource?: CombatRandomSource } = {},
   ): CombatResult {
-    const now = options.now ?? Date.now();
+    return this.repo.transaction(() => {
+      const now = options.now ?? Date.now();
 
-    if (!attackerUserId || !defenderUserId) return { ok: false, reason: 'invalid_target' };
-    if (attackerUserId === defenderUserId) return { ok: false, reason: 'self_target' };
+      if (!attackerUserId || !defenderUserId) return { ok: false, reason: 'invalid_target' };
+      if (attackerUserId === defenderUserId) return { ok: false, reason: 'self_target' };
 
-    const attacker = this.players.get(attackerUserId);
-    if (!attacker) return { ok: false, reason: 'attacker_not_found' };
+      const attacker = this.repo.getPlayer(attackerUserId);
+      if (!attacker) return { ok: false, reason: 'attacker_not_found' };
 
-    const defender = this.players.get(defenderUserId);
-    if (!defender) return { ok: false, reason: 'target_not_found' };
+      const defender = this.repo.getPlayer(defenderUserId);
+      if (!defender) return { ok: false, reason: 'target_not_found' };
 
-    if (attacker.combatCooldownUntil !== null && now < attacker.combatCooldownUntil) {
+      if (attacker.combatCooldownUntil !== null && now < attacker.combatCooldownUntil) {
+        return {
+          ok: false,
+          reason: 'cooldown',
+          remainingMs: attacker.combatCooldownUntil - now,
+        };
+      }
+
+      const energy = this.consumeEnergy(attackerUserId, COMBAT_ENERGY_COST);
+      if (!energy.ok) {
+        return {
+          ok: false,
+          reason: 'insufficient_energy',
+          energy: this.getOrCreatePlayer(attackerUserId).energy,
+        };
+      }
+
+      const attackerStats = computeEffectiveStats(attacker);
+      const defenderStats = computeEffectiveStats(defender);
+
+      const randomSource =
+        options.randomSource ??
+        createDefaultCombatRandomSource(attackerStats.luck, defenderStats.luck);
+      const attackerCritical = randomSource.rollAttackerCritical();
+      const defenderCritical = randomSource.rollDefenderCritical();
+
+      let attackerDamage = Math.max(1, attackerStats.attack - defenderStats.defense);
+      let defenderDamage = Math.max(1, defenderStats.attack - attackerStats.defense);
+      if (attackerCritical) attackerDamage *= 2;
+      if (defenderCritical) defenderDamage *= 2;
+
+      let outcome: 'win' | 'loss' | 'draw';
+      if (attackerDamage > defenderDamage) outcome = 'win';
+      else if (defenderDamage > attackerDamage) outcome = 'loss';
+      else outcome = 'draw';
+
+      let attackerXp: number;
+      let attackerCoins: number;
+      let defenderXp: number;
+      let defenderCoins: number;
+      if (outcome === 'win') {
+        attackerXp = COMBAT_XP_WIN;
+        attackerCoins = COMBAT_COINS_WIN;
+        defenderXp = COMBAT_XP_LOSS;
+        defenderCoins = COMBAT_COINS_LOSS;
+        attacker.wins += 1;
+        defender.losses += 1;
+      } else if (outcome === 'loss') {
+        attackerXp = COMBAT_XP_LOSS;
+        attackerCoins = COMBAT_COINS_LOSS;
+        defenderXp = COMBAT_XP_WIN;
+        defenderCoins = COMBAT_COINS_WIN;
+        attacker.losses += 1;
+        defender.wins += 1;
+      } else {
+        attackerXp = COMBAT_XP_DRAW;
+        attackerCoins = COMBAT_COINS_DRAW;
+        defenderXp = COMBAT_XP_DRAW;
+        defenderCoins = COMBAT_COINS_DRAW;
+      }
+
+      this.addCoins(attackerUserId, attackerCoins);
+      const levelsGained = this.addXp(attackerUserId, attackerXp).levelsGained;
+      this.addCoins(defenderUserId, defenderCoins);
+      this.addXp(defenderUserId, defenderXp);
+
+      const cooldownUntil = now + COMBAT_COOLDOWN_MS;
+      attacker.combatCooldownUntil = cooldownUntil;
+      this.trackMissionProgress(attackerUserId, 'combat', now);
+      this.repo.savePlayer(attacker);
+      this.repo.savePlayer(defender);
+
       return {
-        ok: false,
-        reason: 'cooldown',
-        remainingMs: attacker.combatCooldownUntil - now,
+        ok: true,
+        outcome,
+        attackerDamage,
+        defenderDamage,
+        attackerCritical,
+        defenderCritical,
+        xp: attackerXp,
+        coins: attackerCoins,
+        attackerLevel: attacker.level,
+        levelsGained,
+        energy: attacker.energy,
+        maxEnergy: attacker.maxEnergy,
+        cooldownUntil,
       };
-    }
-
-    const energy = this.consumeEnergy(attackerUserId, COMBAT_ENERGY_COST);
-    if (!energy.ok) {
-      return {
-        ok: false,
-        reason: 'insufficient_energy',
-        energy: this.getOrCreatePlayer(attackerUserId).energy,
-      };
-    }
-
-    const attackerStats = computeEffectiveStats(attacker);
-    const defenderStats = computeEffectiveStats(defender);
-
-    const randomSource =
-      options.randomSource ??
-      createDefaultCombatRandomSource(attackerStats.luck, defenderStats.luck);
-    const attackerCritical = randomSource.rollAttackerCritical();
-    const defenderCritical = randomSource.rollDefenderCritical();
-
-    let attackerDamage = Math.max(1, attackerStats.attack - defenderStats.defense);
-    let defenderDamage = Math.max(1, defenderStats.attack - attackerStats.defense);
-    if (attackerCritical) attackerDamage *= 2;
-    if (defenderCritical) defenderDamage *= 2;
-
-    let outcome: 'win' | 'loss' | 'draw';
-    if (attackerDamage > defenderDamage) outcome = 'win';
-    else if (defenderDamage > attackerDamage) outcome = 'loss';
-    else outcome = 'draw';
-
-    let attackerXp: number;
-    let attackerCoins: number;
-    let defenderXp: number;
-    let defenderCoins: number;
-    if (outcome === 'win') {
-      attackerXp = COMBAT_XP_WIN;
-      attackerCoins = COMBAT_COINS_WIN;
-      defenderXp = COMBAT_XP_LOSS;
-      defenderCoins = COMBAT_COINS_LOSS;
-      attacker.wins += 1;
-      defender.losses += 1;
-    } else if (outcome === 'loss') {
-      attackerXp = COMBAT_XP_LOSS;
-      attackerCoins = COMBAT_COINS_LOSS;
-      defenderXp = COMBAT_XP_WIN;
-      defenderCoins = COMBAT_COINS_WIN;
-      attacker.losses += 1;
-      defender.wins += 1;
-    } else {
-      attackerXp = COMBAT_XP_DRAW;
-      attackerCoins = COMBAT_COINS_DRAW;
-      defenderXp = COMBAT_XP_DRAW;
-      defenderCoins = COMBAT_COINS_DRAW;
-    }
-
-    this.addCoins(attackerUserId, attackerCoins);
-    const levelsGained = this.addXp(attackerUserId, attackerXp).levelsGained;
-    this.addCoins(defenderUserId, defenderCoins);
-    this.addXp(defenderUserId, defenderXp);
-
-    const cooldownUntil = now + COMBAT_COOLDOWN_MS;
-    attacker.combatCooldownUntil = cooldownUntil;
-    this.trackMissionProgress(attackerUserId, 'combat', now);
-
-    return {
-      ok: true,
-      outcome,
-      attackerDamage,
-      defenderDamage,
-      attackerCritical,
-      defenderCritical,
-      xp: attackerXp,
-      coins: attackerCoins,
-      attackerLevel: attacker.level,
-      levelsGained,
-      energy: attacker.energy,
-      maxEnergy: attacker.maxEnergy,
-      cooldownUntil,
-    };
+    });
   }
 
   hunt(
     userId: string,
     options: { now?: number; randomSource?: HuntRandomSource } = {},
   ): HuntResult {
-    const now = options.now ?? Date.now();
-    const player = this.getOrCreatePlayer(userId);
+    return this.repo.transaction(() => {
+      const now = options.now ?? Date.now();
+      const player = this.getOrCreatePlayer(userId);
 
-    if (player.huntCooldownUntil !== null && now < player.huntCooldownUntil) {
-      return {
-        ok: false,
-        reason: 'cooldown',
-        remainingMs: player.huntCooldownUntil - now,
-      };
-    }
+      if (player.huntCooldownUntil !== null && now < player.huntCooldownUntil) {
+        return {
+          ok: false,
+          reason: 'cooldown',
+          remainingMs: player.huntCooldownUntil - now,
+        };
+      }
 
-    const energy = this.consumeEnergy(userId, HUNT_ENERGY_COST);
-    if (!energy.ok) {
+      const energy = this.consumeEnergy(userId, HUNT_ENERGY_COST);
+      if (!energy.ok) {
+        return {
+          ok: false,
+          reason: 'insufficient_energy',
+          energy: player.energy,
+        };
+      }
+
+      const monsters = getAllMonsters();
+      const stats = computeEffectiveStats(player);
+      const randomSource = options.randomSource ?? createDefaultHuntRandomSource(stats.luck);
+      const monster = monsters[randomSource.pickMonsterIndex(monsters.length)];
+      const critical = randomSource.rollPlayerCritical();
+
+      let playerDamage = Math.max(1, stats.attack - monster.defense);
+      const monsterDamage = Math.max(1, monster.attack - stats.defense);
+      if (critical) playerDamage *= 2;
+
+      const victory = playerDamage >= monsterDamage;
+
+      let rewardCoins = 0;
+      let rewardXp = 0;
+      let loot: HuntLootEntry[] = [];
+      if (victory) {
+        rewardCoins = randomSource.rollRange(monster.rewardCoins.min, monster.rewardCoins.max);
+        rewardXp = randomSource.rollRange(monster.rewardXp.min, monster.rewardXp.max);
+        this.addCoins(userId, rewardCoins);
+        this.addXp(userId, rewardXp);
+        loot = this.grantHuntLoot(userId, monster, randomSource);
+      }
+
+      const cooldownUntil = now + HUNT_COOLDOWN_MS;
+      player.huntCooldownUntil = cooldownUntil;
+      this.trackMissionProgress(userId, 'hunt', now);
+      this.repo.savePlayer(player);
+
       return {
-        ok: false,
-        reason: 'insufficient_energy',
+        ok: true,
+        outcome: victory ? 'victory' : 'defeat',
+        monsterId: monster.id,
+        monsterName: monster.name,
+        monsterEmoji: monster.emoji,
+        playerDamage,
+        monsterDamage,
+        critical,
+        rewardCoins,
+        rewardXp,
+        loot,
         energy: player.energy,
+        maxEnergy: player.maxEnergy,
+        cooldownUntil,
       };
-    }
-
-    const monsters = getAllMonsters();
-    const stats = computeEffectiveStats(player);
-    const randomSource = options.randomSource ?? createDefaultHuntRandomSource(stats.luck);
-    const monster = monsters[randomSource.pickMonsterIndex(monsters.length)];
-    const critical = randomSource.rollPlayerCritical();
-
-    let playerDamage = Math.max(1, stats.attack - monster.defense);
-    const monsterDamage = Math.max(1, monster.attack - stats.defense);
-    if (critical) playerDamage *= 2;
-
-    const victory = playerDamage >= monsterDamage;
-
-    let rewardCoins = 0;
-    let rewardXp = 0;
-    let loot: HuntLootEntry[] = [];
-    if (victory) {
-      rewardCoins = randomSource.rollRange(monster.rewardCoins.min, monster.rewardCoins.max);
-      rewardXp = randomSource.rollRange(monster.rewardXp.min, monster.rewardXp.max);
-      this.addCoins(userId, rewardCoins);
-      this.addXp(userId, rewardXp);
-      loot = this.grantHuntLoot(userId, monster, randomSource);
-    }
-
-    const cooldownUntil = now + HUNT_COOLDOWN_MS;
-    player.huntCooldownUntil = cooldownUntil;
-    this.trackMissionProgress(userId, 'hunt', now);
-
-    return {
-      ok: true,
-      outcome: victory ? 'victory' : 'defeat',
-      monsterId: monster.id,
-      monsterName: monster.name,
-      monsterEmoji: monster.emoji,
-      playerDamage,
-      monsterDamage,
-      critical,
-      rewardCoins,
-      rewardXp,
-      loot,
-      energy: player.energy,
-      maxEnergy: player.maxEnergy,
-      cooldownUntil,
-    };
+    });
   }
 
   private grantHuntLoot(
@@ -683,32 +686,35 @@ export class RpgService implements RpgServiceView {
   }
 
   claimMission(userId: string, missionId: string, now: number = Date.now()): ClaimMissionResult {
-    const dayKey = dayKeyFromDate(new Date(now));
-    const mission = findMissionById(missionId);
-    if (!mission) return { ok: false, reason: 'unknown_mission' };
+    return this.repo.transaction(() => {
+      const dayKey = dayKeyFromDate(new Date(now));
+      const mission = findMissionById(missionId);
+      if (!mission) return { ok: false, reason: 'unknown_mission' };
 
-    const activeToday = selectMissionsForDay(dayKey).some((m) => m.id === mission.id);
-    if (!activeToday) return { ok: false, reason: 'not_active_today' };
+      const activeToday = selectMissionsForDay(dayKey).some((m) => m.id === mission.id);
+      if (!activeToday) return { ok: false, reason: 'not_active_today' };
 
-    const player = this.getOrCreatePlayer(userId);
-    const existing = player.missions[mission.id];
-    const state: DailyMissionState =
-      existing && existing.dayKey === dayKey ? existing : { dayKey, progress: 0, claimed: false };
+      const player = this.getOrCreatePlayer(userId);
+      const existing = player.missions[mission.id];
+      const state: DailyMissionState =
+        existing && existing.dayKey === dayKey ? existing : { dayKey, progress: 0, claimed: false };
 
-    if (state.claimed) return { ok: false, reason: 'already_claimed' };
-    if (state.progress < mission.target) return { ok: false, reason: 'incomplete' };
+      if (state.claimed) return { ok: false, reason: 'already_claimed' };
+      if (state.progress < mission.target) return { ok: false, reason: 'incomplete' };
 
-    player.missions[mission.id] = { ...state, claimed: true };
-    this.addCoins(userId, mission.rewardCoins);
-    this.addXp(userId, mission.rewardXp);
+      player.missions[mission.id] = { ...state, claimed: true };
+      this.addCoins(userId, mission.rewardCoins);
+      this.addXp(userId, mission.rewardXp);
+      this.repo.savePlayer(player);
 
-    return {
-      ok: true,
-      missionId: mission.id,
-      rewardXp: mission.rewardXp,
-      rewardCoins: mission.rewardCoins,
-      walletCoins: player.walletCoins,
-    };
+      return {
+        ok: true,
+        missionId: mission.id,
+        rewardXp: mission.rewardXp,
+        rewardCoins: mission.rewardCoins,
+        walletCoins: player.walletCoins,
+      };
+    });
   }
 }
 

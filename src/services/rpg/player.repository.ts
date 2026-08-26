@@ -59,6 +59,7 @@ export class PlayerRepository {
 
   private readonly stmts: {
     getPlayer: Database.Statement;
+    selectAllPlayers: Database.Statement;
     upsertPlayer: Database.Statement;
     deleteInventory: Database.Statement;
     insertInventory: Database.Statement;
@@ -78,6 +79,12 @@ export class PlayerRepository {
                 wallet_coins, bank_coins, wins, losses, last_daily,
                 robbery_cooldown, combat_cooldown_until, hunt_cooldown_until
          FROM players WHERE user_id = ?`,
+      ),
+      selectAllPlayers: db.prepare(
+        `SELECT user_id, level, xp, energy, max_energy, attack, defense, luck,
+                wallet_coins, bank_coins, wins, losses, last_daily,
+                robbery_cooldown, combat_cooldown_until, hunt_cooldown_until
+         FROM players`,
       ),
       upsertPlayer: db.prepare(
         `INSERT INTO players (user_id, level, xp, energy, max_energy, attack, defense, luck,
@@ -197,6 +204,22 @@ export class PlayerRepository {
     }
 
     this.cache.set(player.userId, player);
+  }
+
+  getAllPlayers(): RpgPlayer[] {
+    const rows = this.stmts.selectAllPlayers.all() as PlayerRow[];
+    return rows.map((row) => {
+      const userId = row.user_id;
+      const cached = this.cache.get(userId);
+      if (cached) return cached;
+
+      const player = this.rowToPlayer(row);
+      player.inventory = this.loadInventory(userId);
+      player.equipment = this.loadEquipment(userId);
+      player.missions = this.loadMissions(userId);
+      this.cache.set(userId, player);
+      return player;
+    });
   }
 
   transaction<T>(fn: () => T): T {
