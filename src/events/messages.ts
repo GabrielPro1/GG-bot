@@ -1,4 +1,10 @@
-import { isJidStatusBroadcast, type WAMessage, type WASocket } from '@whiskeysockets/baileys';
+import {
+  isJidStatusBroadcast,
+  proto,
+  generateWAMessageFromContent,
+  type WAMessage,
+  type WASocket,
+} from '@whiskeysockets/baileys';
 import type { CommandDispatcher } from '../commands/dispatcher.js';
 import type { MentionedUser } from '../commands/types.js';
 import type { IdentityService } from '../services/identity/identity.service.js';
@@ -58,6 +64,10 @@ function summarizeMessage(message: WAMessage['message']): MessageSummary {
   if (message.liveLocationMessage) return { kind: 'live-location' };
   if (message.pollCreationMessage) return { kind: 'poll' };
   if (message.reactionMessage) return { kind: 'reaction' };
+  if (message.listResponseMessage) {
+    const rowId = message.listResponseMessage.singleSelectReply?.selectedRowId;
+    return { kind: 'list-response', preview: rowId ? truncateText(rowId) : undefined };
+  }
   const firstSetKey = Object.keys(message).find(
     (key) => (message as Record<string, unknown>)[key] != null,
   );
@@ -67,6 +77,9 @@ function summarizeMessage(message: WAMessage['message']): MessageSummary {
 function extractText(message: WAMessage['message']): string | null {
   if (message?.conversation) return message.conversation;
   if (message?.extendedTextMessage?.text) return message.extendedTextMessage.text;
+  if (message?.listResponseMessage?.singleSelectReply?.selectedRowId) {
+    return message.listResponseMessage.singleSelectReply.selectedRowId;
+  }
   return null;
 }
 
@@ -114,6 +127,33 @@ export function registerMessageLogger(
           identity,
           reply: (replyText) =>
             sock.sendMessage(chatJid, { text: replyText }).then(() => undefined),
+          sendList: (options) => {
+            const listMessage = proto.Message.create({
+              listMessage: {
+                title: options.title,
+                description: options.text,
+                buttonText: options.buttonText,
+                footerText: options.footer,
+                listType: proto.Message.ListMessage.ListType.SINGLE_SELECT,
+                sections: options.sections.map((section) => ({
+                  title: section.title,
+                  rows: section.rows.map((row) => ({
+                    title: row.title,
+                    rowId: row.rowId,
+                    description: row.description,
+                  })),
+                })),
+              },
+            });
+            const fullMsg = generateWAMessageFromContent(chatJid, listMessage, {
+              userJid: sock.user?.id ?? '',
+            });
+            return sock
+              .relayMessage(chatJid, fullMsg.message!, {
+                messageId: fullMsg.key.id!,
+              })
+              .then(() => undefined);
+          },
           mentions: resolveMentions(identityService, message.message),
         })
         .catch((error: unknown) => {

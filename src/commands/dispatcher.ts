@@ -8,6 +8,7 @@ const COMMAND_PREFIX = '/';
 export interface CommandInvocation {
   identity: WaUserIdentity;
   reply: CommandContext['reply'];
+  sendList: CommandContext['sendList'];
   mentions?: readonly MentionedUser[];
 }
 
