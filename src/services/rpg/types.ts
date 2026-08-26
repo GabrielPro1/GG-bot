@@ -32,7 +32,47 @@ export interface RpgPlayer {
   huntCooldownUntil: number | null;
   inventory: Record<string, number>;
   equipment: EquipmentSlots;
+  missions: Record<string, DailyMissionState>;
 }
+
+export interface DailyMissionState {
+  dayKey: string;
+  progress: number;
+  claimed: boolean;
+}
+
+export interface DailyMissionView {
+  missionId: string;
+  emoji: string;
+  name: string;
+  description: string;
+  goalType: string;
+  target: number;
+  progress: number;
+  ready: boolean;
+  claimed: boolean;
+  rewardXp: number;
+  rewardCoins: number;
+}
+
+export type ClaimMissionErrorReason =
+  | 'unknown_mission'
+  | 'not_active_today'
+  | 'incomplete'
+  | 'already_claimed';
+
+export type ClaimMissionResult =
+  | {
+      ok: true;
+      missionId: string;
+      rewardXp: number;
+      rewardCoins: number;
+      walletCoins: number;
+    }
+  | {
+      ok: false;
+      reason: ClaimMissionErrorReason;
+    };
 
 export interface CombatRandomSource {
   rollAttackerCritical(): boolean;
@@ -195,6 +235,8 @@ export interface RpgServiceView {
     userId: string,
     options?: { now?: number; randomSource?: HuntRandomSource },
   ): HuntResult;
+  getDailyMissions(userId: string, now?: number): DailyMissionView[];
+  claimMission(userId: string, missionId: string, now?: number): ClaimMissionResult;
   rob(thiefUserId: string, victimUserId: string, options?: RobOptions): RobResult;
 }
 

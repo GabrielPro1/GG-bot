@@ -1,4 +1,4 @@
-import type { RpgItem } from './types.js';
+﻿import type { RpgItem } from './types.js';
 
 export const RPG_ITEMS: readonly RpgItem[] = [
   {
@@ -7,6 +7,7 @@ export const RPG_ITEMS: readonly RpgItem[] = [
     emoji: '🧪',
     price: 50,
     description: 'Recupera energia',
+    rarity: 'common',
     effectDescription: 'Recupera energia',
     effectEmoji: '❤️',
     type: 'consumable',
@@ -18,6 +19,7 @@ export const RPG_ITEMS: readonly RpgItem[] = [
     emoji: '🍀',
     price: 250,
     description: '+10% fortuna',
+    rarity: 'epic',
     effectDescription: '+10% fortuna',
     effectEmoji: '✨',
     type: 'accessory',
@@ -29,6 +31,7 @@ export const RPG_ITEMS: readonly RpgItem[] = [
     emoji: '⚔️',
     price: 500,
     description: '+10 attacco',
+    rarity: 'rare',
     effectDescription: '+10 attacco',
     effectEmoji: '⚔️',
     type: 'weapon',
@@ -40,6 +43,7 @@ export const RPG_ITEMS: readonly RpgItem[] = [
     emoji: '🛡️',
     price: 500,
     description: '+10 difesa',
+    rarity: 'uncommon',
     effectDescription: '+10 difesa',
     effectEmoji: '🛡️',
     type: 'armor',

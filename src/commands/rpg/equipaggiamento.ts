@@ -1,4 +1,5 @@
 import { findItemById } from '../../services/rpg/items/catalog.js';
+import { getRarityInfo } from '../../services/rpg/items/rarity.js';
 import type { EquipSlot } from '../../services/rpg/types.js';
 import type { Command } from '../types.js';
 
@@ -41,7 +42,13 @@ export default {
       }
       const item = findItemById(equippedId);
       slotLines.push(SLOT_LABELS[slot]);
-      slotLines.push(item ? `   ${item.emoji} ${item.name}` : `   ${equippedId}`);
+      if (item) {
+        const rarity = getRarityInfo(item.rarity);
+        slotLines.push(`   ${rarity.emoji} ${rarity.name}`);
+        slotLines.push(`   ${item.emoji} ${item.name}`);
+      } else {
+        slotLines.push(`   ${equippedId}`);
+      }
       if (item?.effectDescription) {
         bonusLines.push(`${item.effectEmoji ?? SLOT_BONUS_EMOJI[slot]} ${item.effectDescription}`);
       }

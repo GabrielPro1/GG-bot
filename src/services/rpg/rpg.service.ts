@@ -1,12 +1,18 @@
 import { findItemById } from './items/catalog.js';
 import { isEquippable, type RpgItemType } from './items/types.js';
+import { findMissionById, MISSIONS_PER_DAY, RPG_MISSIONS } from './missions/catalog.js';
 import { getAllMonsters } from './monsters/catalog.js';
 import type { MonsterLootEntry, RpgMonster } from './monsters/types.js';
+import type { RpgMission } from './missions/types.js';
+import type { MissionGoalType } from './missions/types.js';
 import type {
   AddItemResult,
   ClaimDailyResult,
+  ClaimMissionResult,
   CombatRandomSource,
   CombatResult,
+  DailyMissionState,
+  DailyMissionView,
   EnergyResult,
   EquipResult,
   EquipSlot,
@@ -112,6 +118,7 @@ function createInitialPlayer(userId: string): RpgPlayer {
     huntCooldownUntil: null,
     inventory: {},
     equipment: { weapon: null, armor: null, accessory: null },
+    missions: {},
   };
 }
 
@@ -329,6 +336,7 @@ export class RpgService implements RpgServiceView {
     }
     player.lastDaily = now;
     player.walletCoins += DAILY_REWARD_COINS;
+    this.trackMissionProgress(userId, 'daily', now);
     return { claimed: true, reward: DAILY_REWARD_COINS, walletCoins: player.walletCoins };
   }
 
@@ -372,6 +380,7 @@ export class RpgService implements RpgServiceView {
     victim.walletCoins -= loot;
     thief.walletCoins += loot;
     thief.robberyCooldown = { until: now + ROB_SUCCESS_COOLDOWN_MS, jailed: false };
+    this.trackMissionProgress(thiefUserId, 'robbery', now);
 
     return {
       outcome: 'success',
@@ -466,6 +475,7 @@ export class RpgService implements RpgServiceView {
 
     const cooldownUntil = now + COMBAT_COOLDOWN_MS;
     attacker.combatCooldownUntil = cooldownUntil;
+    this.trackMissionProgress(attackerUserId, 'combat', now);
 
     return {
       ok: true,
@@ -533,6 +543,7 @@ export class RpgService implements RpgServiceView {
 
     const cooldownUntil = now + HUNT_COOLDOWN_MS;
     player.huntCooldownUntil = cooldownUntil;
+    this.trackMissionProgress(userId, 'hunt', now);
 
     return {
       ok: true,
@@ -576,6 +587,73 @@ export class RpgService implements RpgServiceView {
     }
     return granted;
   }
+
+  trackMissionProgress(userId: string, goalType: MissionGoalType, now: number = Date.now()): void {
+    const dayKey = dayKeyFromDate(new Date(now));
+    const player = this.getOrCreatePlayer(userId);
+    for (const mission of selectMissionsForDay(dayKey)) {
+      if (mission.goalType !== goalType) continue;
+      const state = player.missions[mission.id];
+      if (!state || state.dayKey !== dayKey) {
+        player.missions[mission.id] = { dayKey, progress: 1, claimed: false };
+        continue;
+      }
+      state.progress = Math.min(mission.target, state.progress + 1);
+    }
+  }
+
+  getDailyMissions(userId: string, now: number = Date.now()): DailyMissionView[] {
+    const dayKey = dayKeyFromDate(new Date(now));
+    const player = this.getOrCreatePlayer(userId);
+    return selectMissionsForDay(dayKey).map((mission) => {
+      const state = player.missions[mission.id];
+      const progress =
+        state && state.dayKey === dayKey ? Math.min(mission.target, state.progress) : 0;
+      const claimed = (state && state.dayKey === dayKey && state.claimed) ?? false;
+      return {
+        missionId: mission.id,
+        emoji: mission.emoji,
+        name: mission.name,
+        description: mission.description,
+        goalType: mission.goalType,
+        target: mission.target,
+        progress,
+        ready: progress >= mission.target && !claimed,
+        claimed,
+        rewardXp: mission.rewardXp,
+        rewardCoins: mission.rewardCoins,
+      };
+    });
+  }
+
+  claimMission(userId: string, missionId: string, now: number = Date.now()): ClaimMissionResult {
+    const dayKey = dayKeyFromDate(new Date(now));
+    const mission = findMissionById(missionId);
+    if (!mission) return { ok: false, reason: 'unknown_mission' };
+
+    const activeToday = selectMissionsForDay(dayKey).some((m) => m.id === mission.id);
+    if (!activeToday) return { ok: false, reason: 'not_active_today' };
+
+    const player = this.getOrCreatePlayer(userId);
+    const existing = player.missions[mission.id];
+    const state: DailyMissionState =
+      existing && existing.dayKey === dayKey ? existing : { dayKey, progress: 0, claimed: false };
+
+    if (state.claimed) return { ok: false, reason: 'already_claimed' };
+    if (state.progress < mission.target) return { ok: false, reason: 'incomplete' };
+
+    player.missions[mission.id] = { ...state, claimed: true };
+    this.addCoins(userId, mission.rewardCoins);
+    this.addXp(userId, mission.rewardXp);
+
+    return {
+      ok: true,
+      missionId: mission.id,
+      rewardXp: mission.rewardXp,
+      rewardCoins: mission.rewardCoins,
+      walletCoins: player.walletCoins,
+    };
+  }
 }
 
 function createDefaultCombatRandomSource(
@@ -595,6 +673,26 @@ function createDefaultHuntRandomSource(playerLuck: number): HuntRandomSource {
     rollRange: (min, max) => Math.floor(Math.random() * (max - min + 1)) + min,
     rollLootDrop: (dropChance) => Math.random() * 100 < dropChance,
   };
+}
+
+export function dayKeyFromDate(date: Date): string {
+  const year = date.getFullYear();
+  const month = String(date.getMonth() + 1).padStart(2, '0');
+  const day = String(date.getDate()).padStart(2, '0');
+  return `${year}-${month}-${day}`;
+}
+
+export function selectMissionsForDay(dayKey: string): RpgMission[] {
+  let checksum = 0;
+  for (let i = 0; i < dayKey.length; i++) {
+    checksum += dayKey.charCodeAt(i);
+  }
+  const start = checksum % RPG_MISSIONS.length;
+  const selected: RpgMission[] = [];
+  for (let i = 0; i < Math.min(MISSIONS_PER_DAY, RPG_MISSIONS.length); i++) {
+    selected.push(RPG_MISSIONS[(start + i) % RPG_MISSIONS.length]);
+  }
+  return selected;
 }
 
 interface ResolvedLootEntry {

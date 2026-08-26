@@ -1,5 +1,7 @@
 export type RpgItemType = 'weapon' | 'armor' | 'accessory' | 'consumable';
 
+export type RpgItemRarity = 'common' | 'uncommon' | 'rare' | 'epic' | 'legendary';
+
 export type RpgItemEffect =
   | { kind: 'attack'; amount: number }
   | { kind: 'defense'; amount: number }
@@ -12,6 +14,7 @@ export interface RpgItem {
   readonly emoji: string;
   readonly price: number;
   readonly description: string;
+  readonly rarity: RpgItemRarity;
   readonly effectDescription?: string;
   readonly effectEmoji?: string;
   readonly type: RpgItemType;

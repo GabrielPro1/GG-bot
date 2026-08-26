@@ -1,4 +1,5 @@
 import { getAllItems } from '../../services/rpg/items/catalog.js';
+import { getRarityInfo } from '../../services/rpg/items/rarity.js';
 import type { Command } from '../types.js';
 
 const SIGNATURE = '╰━━━━━━━━ ✨ GG BOT ✨ ━━━━━━━━╯';
@@ -16,8 +17,12 @@ export default {
     const ownedEntries = getAllItems()
       .filter((item) => (inventory[item.id] ?? 0) > 0)
       .map((item) => {
-        const line = `${item.emoji} ${item.name} ×${inventory[item.id]}`;
-        return equippedIds.has(item.id) ? `${line}\n   ✅ Equipaggiata` : line;
+        const rarity = getRarityInfo(item.rarity);
+        const lines = [`${rarity.emoji} ${rarity.name}`, `${item.emoji} ${item.name} ×${inventory[item.id]}`];
+        if (equippedIds.has(item.id)) {
+          lines.push('   ✅ Equipaggiata');
+        }
+        return lines.join('\n');
       });
 
     if (ownedEntries.length === 0) {

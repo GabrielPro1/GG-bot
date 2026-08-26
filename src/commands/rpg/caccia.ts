@@ -1,4 +1,5 @@
 import { findItemById } from '../../services/rpg/items/catalog.js';
+import { getRarityInfo } from '../../services/rpg/items/rarity.js';
 import type { HuntLootEntry, HuntResult } from '../../services/rpg/types.js';
 import type { Command } from '../types.js';
 
@@ -6,8 +7,11 @@ const SIGNATURE = '╰━━━━━━━━ ✨ GG BOT ✨ ━━━━━━
 
 function formatLootLine(entry: HuntLootEntry): string {
   const item = findItemById(entry.itemId);
-  const label = item ? `${item.emoji} ${item.name}` : entry.itemId;
-  return `${label} ×${entry.quantity}`;
+  if (!item) {
+    return `${entry.itemId} ×${entry.quantity}`;
+  }
+  const rarity = getRarityInfo(item.rarity);
+  return `${rarity.emoji} ${rarity.name}\n${item.emoji} ${item.name} ×${entry.quantity}`;
 }
 
 function renderLootSection(loot: HuntLootEntry[]): string[] {
