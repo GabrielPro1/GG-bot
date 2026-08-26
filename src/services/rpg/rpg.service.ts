@@ -20,6 +20,8 @@ import type {
   HuntLootEntry,
   HuntRandomSource,
   HuntResult,
+  LeaderboardEntry,
+  NameResolver,
   PlayerStats,
   PurchaseResult,
   RobOptions,
@@ -126,8 +128,62 @@ export interface AddXpResult {
   levelsGained: number;
 }
 
+const DEFAULT_LEADERBOARD_LIMIT = 10;
+
 export class RpgService implements RpgServiceView {
   private readonly players = new Map<string, RpgPlayer>();
+  private nameResolver: NameResolver | null = null;
+
+  setNameResolver(resolver: NameResolver): void {
+    this.nameResolver = resolver;
+  }
+
+  getPlayerName(userId: string): string {
+    const resolved = this.nameResolver?.(userId);
+    return resolved ?? '@Giocatore';
+  }
+
+  getLeaderboardByLevel(limit: number = DEFAULT_LEADERBOARD_LIMIT): readonly LeaderboardEntry[] {
+    return [...this.players.values()]
+      .sort((a, b) => b.level - a.level || b.xp - a.xp)
+      .slice(0, limit)
+      .map((p) => ({
+        userId: p.userId,
+        level: p.level,
+        xp: p.xp,
+        wins: p.wins,
+        walletCoins: p.walletCoins,
+        bankCoins: p.bankCoins,
+      }));
+  }
+
+  getLeaderboardByWins(limit: number = DEFAULT_LEADERBOARD_LIMIT): readonly LeaderboardEntry[] {
+    return [...this.players.values()]
+      .sort((a, b) => b.wins - a.wins || b.level - a.level)
+      .slice(0, limit)
+      .map((p) => ({
+        userId: p.userId,
+        level: p.level,
+        xp: p.xp,
+        wins: p.wins,
+        walletCoins: p.walletCoins,
+        bankCoins: p.bankCoins,
+      }));
+  }
+
+  getLeaderboardByWealth(limit: number = DEFAULT_LEADERBOARD_LIMIT): readonly LeaderboardEntry[] {
+    return [...this.players.values()]
+      .sort((a, b) => (b.walletCoins + b.bankCoins) - (a.walletCoins + a.bankCoins))
+      .slice(0, limit)
+      .map((p) => ({
+        userId: p.userId,
+        level: p.level,
+        xp: p.xp,
+        wins: p.wins,
+        walletCoins: p.walletCoins,
+        bankCoins: p.bankCoins,
+      }));
+  }
 
   getOrCreatePlayer(userId: string): RpgPlayer {
     const existing = this.players.get(userId);

@@ -4,8 +4,11 @@ import { RpgService } from './services/rpg/rpg.service.js';
 import { CommandRegistry } from './commands/registry.js';
 import { CommandDispatcher } from './commands/dispatcher.js';
 import { CommandLoader } from './commands/loader.js';
+import { openDatabase } from './db/index.js';
 
 console.log('GG Bot starting...');
+
+const db = openDatabase();
 
 const registry = new CommandRegistry();
 const rpgService = new RpgService();
@@ -19,6 +22,11 @@ try {
 }
 
 const identityService = new IdentityService();
+
+rpgService.setNameResolver((userId) => {
+  const identity = identityService.getById(userId);
+  return identity?.username ?? null;
+});
 
 try {
   await connectWhatsApp({ identityService, dispatcher });

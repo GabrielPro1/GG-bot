@@ -207,6 +207,17 @@ export type RobResult =
   | { outcome: 'unknown_victim' }
   | { outcome: 'broke_victim' };
 
+export type NameResolver = (userId: string) => string | null;
+
+export interface LeaderboardEntry {
+  readonly userId: string;
+  readonly level: number;
+  readonly xp: number;
+  readonly wins: number;
+  readonly walletCoins: number;
+  readonly bankCoins: number;
+}
+
 export interface RpgServiceView {
   getOrCreatePlayer(userId: string): RpgPlayer;
   claimDaily(userId: string, now?: number): ClaimDailyResult;
@@ -238,6 +249,12 @@ export interface RpgServiceView {
   getDailyMissions(userId: string, now?: number): DailyMissionView[];
   claimMission(userId: string, missionId: string, now?: number): ClaimMissionResult;
   rob(thiefUserId: string, victimUserId: string, options?: RobOptions): RobResult;
+
+  setNameResolver(resolver: NameResolver): void;
+  getPlayerName(userId: string): string;
+  getLeaderboardByLevel(limit?: number): readonly LeaderboardEntry[];
+  getLeaderboardByWins(limit?: number): readonly LeaderboardEntry[];
+  getLeaderboardByWealth(limit?: number): readonly LeaderboardEntry[];
 }
 
 export interface HuntRandomSource {
