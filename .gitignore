@@ -12,6 +12,12 @@ dist/
 # WhatsApp authentication/session data
 auth/
 
+# SQLite database
+data/
+
+# Backups
+backups/
+
 # Logs
 logs/
 *.log
