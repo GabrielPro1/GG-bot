@@ -265,6 +265,13 @@ export class IdentityService {
     for (const row of rows) {
       this.pnToLidUsers.set(row.pn_user, row.lid_user);
       this.lidToPnUsers.set(row.lid_user, row.pn_user);
+
+      const classifiedLid: ClassifiedJid = { side: 'lid', user: row.lid_user, jid: jidEncode(row.lid_user, 'lid') };
+      const classifiedPn: ClassifiedJid = { side: 'pn', user: row.pn_user, jid: jidEncode(row.pn_user, 's.whatsapp.net') };
+      const existing = this.findExisting(classifiedLid, classifiedPn);
+      if (!existing) {
+        this.upsert(undefined, classifiedLid, classifiedPn, null);
+      }
     }
   }
 
