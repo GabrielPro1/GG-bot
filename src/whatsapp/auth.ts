@@ -1,6 +1,8 @@
+import { fileURLToPath } from 'node:url';
 import { useMultiFileAuthState } from '@whiskeysockets/baileys';
-import { resolveAuthRoot } from '../config/paths.js';
+
+const AUTH_FOLDER = fileURLToPath(new URL('../../auth', import.meta.url));
 
 export async function createAuthState() {
-  return useMultiFileAuthState(resolveAuthRoot());
+  return useMultiFileAuthState(AUTH_FOLDER);
 }

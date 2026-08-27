@@ -163,23 +163,6 @@ test('closeAll closes every session', async () => {
   assert.equal(manager.size, 0);
 });
 
-test('shutdown ends sockets WITHOUT logging out (preserves credentials)', async () => {
-  const { factory, sockets } = makeStubFactory();
-  const manager = new SessionManager({ socketFactory: factory });
-
-  await manager.createSession('u1');
-  await manager.createSession('u2');
-  await manager.shutdown();
-
-  assert.equal(manager.size, 0);
-  assert.equal(manager.hasSession('u1'), false);
-  assert.equal(manager.hasSession('u2'), false);
-  for (const stub of sockets) {
-    assert.equal(stub.endCalls, 1, 'socket must be ended');
-    assert.equal(stub.logoutCalls, 0, 'shutdown must NOT logout (no credential invalidation)');
-  }
-});
-
 test('default authRoot resolves to an absolute path (project ./auth)', () => {
   const manager = new SessionManager();
   const folder = manager.authFolderFor('u1');

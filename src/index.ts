@@ -11,7 +11,6 @@ import { CommandDispatcher } from './commands/dispatcher.js';
 import { CommandLoader } from './commands/loader.js';
 import { loadOwnerServiceFromEnv } from './config/owners.js';
 import { openDatabase } from './db/index.js';
-import { startHttpServer } from './http/server.js';
 
 console.log('GG Bot starting...');
 
@@ -49,20 +48,10 @@ try {
   console.error('[sessions] restore failed at boot:', error);
 }
 
-const http = await startHttpServer();
-console.log(
-  `[http] health server listening on 0.0.0.0:${(http.server.address() as { port?: number })?.port ?? '?'}`,
-);
-
-let telegramBot: Awaited<ReturnType<typeof startTelegramBot>> | null = null;
 try {
-  void startTelegramBot(sessionManager)
-    .then((bot) => {
-      telegramBot = bot;
-    })
-    .catch((error) => {
-      console.error('[telegram] failed to start Telegram bot:', error);
-    });
+  void startTelegramBot(sessionManager).catch((error) => {
+    console.error('[telegram] failed to start Telegram bot:', error);
+  });
 } catch (error) {
   console.error('Failed to start Telegram bot:', error);
 }
@@ -73,33 +62,3 @@ try {
   console.error('Failed to start GG Bot:', error);
   process.exitCode = 1;
 }
-
-function shutdown(signal: string): void {
-  console.log(`Received ${signal}. Shutting down gracefully...`);
-  void (async () => {
-    try {
-      telegramBot?.stop();
-    } catch (error) {
-      console.error('[shutdown] failed to stop Telegram bot:', error);
-    }
-    try {
-      await sessionManager.shutdown();
-    } catch (error) {
-      console.error('[shutdown] failed to close sessions:', error);
-    }
-    try {
-      await http.close();
-    } catch (error) {
-      console.error('[shutdown] failed to close HTTP server:', error);
-    }
-    try {
-      db.close();
-    } catch {
-      /* DB already closed */
-    }
-    process.exit(0);
-  })();
-}
-
-process.once('SIGINT', () => shutdown('SIGINT'));
-process.once('SIGTERM', () => shutdown('SIGTERM'));
