@@ -1,6 +1,18 @@
 import { describe, it } from 'node:test';
 import assert from 'node:assert/strict';
 import { proto, generateWAMessageFromContent } from '@whiskeysockets/baileys';
+import { CommandRegistry } from '../src/commands/registry.js';
+
+interface SectionLike {
+  title: string;
+  rows: readonly { title: string; rowId: string }[];
+}
+
+function renderBody(section: SectionLike): string {
+  return `${section.title}\n${section.rows.length} ${
+    section.rows.length === 1 ? 'comando' : 'comandi'
+  } ${section.rows.length === 1 ? 'disponibile' : 'disponibili'}`;
+}
 
 interface Row {
   title: string;
@@ -34,7 +46,11 @@ function buildCarousel(text: string, footer: string, buttonText: string, section
         hasMediaAttachment: true,
         imageMessage: { url: 'https://example.invalid/menuimage.png' },
       },
-      body: { text: `${section.rows.length} comandi disponibili` },
+      body: {
+        text: `${section.title}\n${section.rows.length} ${
+          section.rows.length === 1 ? 'comando' : 'comandi'
+        } ${section.rows.length === 1 ? 'disponibile' : 'disponibili'}`,
+      },
       footer: { text },
       nativeFlowMessage: {
         buttons: [{ name: 'single_select', buttonParamsJson }],
@@ -104,10 +120,156 @@ describe('Carousel menu payload structure (Baileys 7.0.0-rc14)', () => {
     assert.equal(firstParams.sections[0].rows.length, 2);
     assert.equal(secondParams.sections[0].rows.length, 1);
     assert.notEqual(first.body?.text, second.body?.text);
-    assert.equal(first.body?.text, '2 comandi disponibili');
+    assert.equal(first.body?.text, 'CORE\n2 comandi disponibili');
+    assert.equal(first.body?.text?.startsWith(firstParams.sections[0].title), true);
 
     assert.equal(full.key.remoteJid, '123456@s.whatsapp.net');
     assert.ok(full.message?.interactiveMessage?.carouselMessage, 'generated message serializes carousel');
     assert.ok(proto.Message.encode(msg).finish().length > 0, 'proto message encodes without error');
   });
 });
+
+describe('Menu card category visibility', () => {
+  interface SectionCapture {
+    title: string;
+    rows: readonly { title: string; rowId: string }[];
+  }
+
+  async function runMenu(): Promise<SectionCapture[]> {
+    const registry = new CommandRegistry();
+    const make = (
+      name: string,
+      category: string,
+      emoji: string,
+    ): { name: string; category: string; emoji: string; description: string; execute: () => void } => ({
+      name,
+      category,
+      emoji,
+      description: `${name} desc`,
+      execute: () => undefined,
+    });
+    registry.register(make('comandocore', 'core', '⚙️') as never);
+    registry.register(make('comandorpg1', 'rpg', '🎮') as never);
+    registry.register(make('comandorpg2', 'rpg', '🎮') as never);
+    registry.register(make('nuovomonete', 'owner', '👑') as never);
+    registry.register(make('rimuovimonete', 'owner', '👑') as never);
+    // an out-of-order extra rpm command to prove counts derive from the registry
+    registry.register(make('extra', 'rpg', '🎮') as never);
+
+    const menu = (
+      await import('../src/commands/core/menu.js')
+    ).default;
+
+    let captured: SectionCapture[] = [];
+    await menu.execute({
+      args: [],
+      identity: {
+        userId: 'owner-user',
+        lid: null,
+        pn: '1234@s.whatsapp.net',
+        username: 'Owner',
+      },
+      reply: async () => undefined,
+      sendList: async (options) => {
+        captured = options.sections.map((s) => ({ title: s.title, rows: asRows(s.rows) }));
+      },
+      registry: registry as never,
+      rpg: {
+        getOrCreatePlayer: () => undefined,
+      } as never,
+      mentions: [],
+      quoted: null,
+    });
+    return captured;
+  }
+
+  function asRows(rows: readonly { title: string; rowId: string; description?: string }[]): {
+    title: string;
+    rowId: string;
+  }[] {
+    return rows.map((r) => ({ title: r.title, rowId: r.rowId }));
+  }
+
+  it('each card body shows the category name and a registry-derived count', async () => {
+    const sections = await runMenu();
+    assert.ok(sections.length >= 3, 'menu must expose CORE, RPG and OWNER sections');
+
+    const core = sections.find((s) => s.title === '⚙️ CORE');
+    const rpg = sections.find((s) => s.title === '🎮 RPG');
+    const owner = sections.find((s) => s.title === '👑 OWNER');
+
+    assert.ok(core, 'CORE section must exist with emoji');
+    assert.ok(rpg, 'RPG section must exist with emoji');
+    assert.ok(owner, 'OWNER section must exist with emoji');
+
+    assert.equal(renderBody(core), '⚙️ CORE\n1 comando disponibile');
+    assert.equal(renderBody(rpg), '🎮 RPG\n3 comandi disponibili');
+    assert.equal(renderBody(owner), '👑 OWNER\n2 comandi disponibili');
+
+    // the category name is embedded in the card body preview (not only inside single_select)
+    for (const section of sections) {
+      assert.equal(renderBody(section).startsWith(section.title), true);
+      assert.equal(renderBody(section).includes('disponibil'), true);
+      assert.equal(/^[0-9]+ comand[oi] disponibil[ei]$/.test(renderBody(section).split('\n')[1]), true);
+    }
+  });
+
+  it('counts change when the registry changes', async () => {
+    const first = await runMenu();
+    const rpgBefore = first.find((s) => s.title === '🎮 RPG');
+    assert.equal(rpgBefore!.rows.length, 3);
+
+    const another = await runMenuWithExtra();
+    const rpgAfter = another.find((s) => s.title === '🎮 RPG');
+    assert.equal(rpgAfter!.rows.length, 4);
+  });
+});
+
+async function runMenuWithExtra(): Promise<{ title: string; rows: readonly { title: string; rowId: string }[] }[]> {
+  const registry = new CommandRegistry();
+  const make = (name: string, category: string, emoji: string) => ({
+    name,
+    category,
+    emoji,
+    description: `${name} desc`,
+    execute: () => undefined,
+  });
+  registry.register(make('a', 'core', '⚙️') as never);
+  registry.register(make('b', 'rpg', '🎮') as never);
+  registry.register(make('c', 'rpg', '🎮') as never);
+  registry.register(make('d', 'rpg', '🎮') as never);
+  registry.register(make('z', 'rpg', '🎮') as never);
+  registry.register(make('owner1', 'owner', '👑') as never);
+  registry.register(make('owner2', 'owner', '👑') as never);
+
+  const menu = (
+    await import('../src/commands/core/menu.js')
+  ).default;
+
+  let captured: { title: string; rows: readonly { title: string; rowId: string }[] }[] = [];
+  await menu.execute({
+    args: [],
+    identity: {
+      userId: 'owner-user',
+      lid: null,
+      pn: '1234@s.whatsapp.net',
+      username: 'Owner',
+    },
+    reply: async () => undefined,
+    sendList: async (options) => {
+      captured = options.sections.map((s) => ({ title: s.title, rows: asRows2(s.rows) }));
+    },
+    registry: registry as never,
+    rpg: {} as never,
+    mentions: [],
+    quoted: null,
+  });
+  return captured;
+}
+
+function asRows2(rows: readonly { title: string; rowId: string; description?: string }[]): {
+  title: string;
+  rowId: string;
+}[] {
+  return rows.map((r) => ({ title: r.title, rowId: r.rowId }));
+}

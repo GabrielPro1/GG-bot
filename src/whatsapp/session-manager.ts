@@ -1,6 +1,6 @@
-import { fileURLToPath } from 'node:url';
 import path from 'node:path';
 import { readdir, rm, stat } from 'node:fs/promises';
+import { resolveAuthRoot } from '../config/paths.js';
 import makeWASocket, {
   Browsers,
   DisconnectReason,
@@ -12,7 +12,6 @@ import makeWASocket, {
 import { Boom } from '@hapi/boom';
 import pino from 'pino';
 
-const GLOBAL_AUTH_FOLDER = fileURLToPath(new URL('../../auth', import.meta.url));
 const MAX_RECONNECT_ATTEMPTS = 5;
 const RECONNECT_BASE_DELAY_MS = 2_000;
 const RECONNECT_MAX_DELAY_MS = 30_000;
@@ -76,7 +75,7 @@ export class SessionManager {
   private readonly onSocketCreated?: (sock: WASocket, session: ManagedSession) => void;
 
   constructor(options: SessionManagerOptions = {}) {
-    this.authRoot = path.resolve(options.authRoot ?? GLOBAL_AUTH_FOLDER);
+    this.authRoot = path.resolve(options.authRoot ?? resolveAuthRoot());
     this.logLevel = options.logLevel ?? 'warn';
     this.onQr = options.onQr;
     this.onConnectionUpdate = options.onConnectionUpdate;
@@ -232,6 +231,28 @@ export class SessionManager {
   async closeAll(): Promise<void> {
     const ids = [...this.sessions.keys()];
     await Promise.all(ids.map((id) => this.closeSession(id)));
+  }
+
+  /**
+   * Gracefully ends every managed session socket WITHOUT logging out, so the
+   * auth/<userId> credentials are preserved for the next boot. Intended for
+   * process shutdown (SIGINT/SIGTERM), not for permanent session removal.
+   */
+  async shutdown(): Promise<void> {
+    const ids = [...this.sessions.keys()];
+    await Promise.all(ids.map((id) => this.endSession(id)));
+  }
+
+  private async endSession(userId: string): Promise<void> {
+    const session = this.sessions.get(userId);
+    if (!session) return;
+    this.sessions.delete(userId);
+    session.state = 'close';
+    try {
+      await session.sock.end(undefined);
+    } catch {
+      /* ignore end errors during shutdown */
+    }
   }
 
   private async buildSocket(session: ManagedSession): Promise<WASocket> {

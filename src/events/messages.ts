@@ -195,7 +195,14 @@ export function registerMessageLogger(
                   hasMediaAttachment: true,
                   imageMessage,
                 },
-                body: { text: `${section.rows.length} comandi disponibili` },
+                body: {
+                  text: [
+                    section.title,
+                    `${section.rows.length} ${
+                      section.rows.length === 1 ? 'comando' : 'comandi'
+                    } ${section.rows.length === 1 ? 'disponibile' : 'disponibili'}`,
+                  ].join('\n'),
+                },
                 footer: { text: options.footer },
                 nativeFlowMessage: {
                   buttons: [{ name: 'single_select', buttonParamsJson }],
