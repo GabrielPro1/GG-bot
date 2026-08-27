@@ -220,6 +220,9 @@ export interface LeaderboardEntry {
 
 export interface RpgServiceView {
   getOrCreatePlayer(userId: string): RpgPlayer;
+  getPlayer(userId: string): RpgPlayer | undefined;
+  addCoins(userId: string, amount: number): void;
+  removeCoins(userId: string, amount: number): number;
   claimDaily(userId: string, now?: number): ClaimDailyResult;
   getWalletBalance(userId: string): number;
   getBankBalance(userId: string): number;

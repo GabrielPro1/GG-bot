@@ -26,6 +26,7 @@ export interface CommandContext {
   registry: CommandRegistryView;
   rpg: RpgServiceView;
   mentions: readonly MentionedUser[];
+  quoted: MentionedUser | null;
 }
 
 export interface Command {
@@ -35,6 +36,7 @@ export interface Command {
   emoji?: string;
   description?: string;
   hidden?: boolean;
+  ownerOnly?: boolean;
   execute: (context: CommandContext) => void | Promise<void>;
 }
 

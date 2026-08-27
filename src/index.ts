@@ -9,6 +9,7 @@ import { PlayerRepository } from './services/rpg/player.repository.js';
 import { CommandRegistry } from './commands/registry.js';
 import { CommandDispatcher } from './commands/dispatcher.js';
 import { CommandLoader } from './commands/loader.js';
+import { loadOwnerServiceFromEnv } from './config/owners.js';
 import { openDatabase } from './db/index.js';
 
 console.log('GG Bot starting...');
@@ -18,7 +19,8 @@ const playerRepo = new PlayerRepository(db);
 
 const registry = new CommandRegistry();
 const rpgService = new RpgService(playerRepo);
-const dispatcher = new CommandDispatcher(registry, rpgService);
+const ownerService = loadOwnerServiceFromEnv();
+const dispatcher = new CommandDispatcher(registry, rpgService, ownerService);
 const loader = new CommandLoader(registry);
 
 try {

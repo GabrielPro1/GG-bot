@@ -187,6 +187,14 @@ export class RpgService implements RpgServiceView {
     this.repo.savePlayer(this.getOrCreatePlayer(userId));
   }
 
+  removeCoins(userId: string, amount: number): number {
+    const player = this.getOrCreatePlayer(userId);
+    const removed = Math.min(player.walletCoins, amount);
+    player.walletCoins = Math.max(0, player.walletCoins - amount);
+    this.repo.savePlayer(player);
+    return removed;
+  }
+
   deposit(userId: string, amount: number): TransferResult {
     if (!isValidAmount(amount)) return { ok: false, error: 'invalid_amount' };
     const player = this.getOrCreatePlayer(userId);

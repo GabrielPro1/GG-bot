@@ -35,6 +35,20 @@ function resolveMentions(
   }));
 }
 
+function resolveQuoted(
+  identityService: IdentityService,
+  message: WAMessage['message'],
+): MentionedUser | null {
+  const contextInfo = message?.extendedTextMessage?.contextInfo;
+  if (!contextInfo) return null;
+  const quotedJid = contextInfo.participant ?? contextInfo.remoteJid ?? null;
+  if (!quotedJid) return null;
+  return {
+    jid: quotedJid,
+    identity: identityService.fromJid(quotedJid),
+  };
+}
+
 function truncateText(text: string): string {
   const normalized = text.replace(/\s+/g, ' ').trim();
   return normalized.length > TEXT_PREVIEW_MAX_LENGTH
@@ -210,6 +224,7 @@ export function registerMessageLogger(
             });
           },
           mentions: resolveMentions(identityService, message.message),
+          quoted: resolveQuoted(identityService, message.message),
         })
         .catch((error: unknown) => {
           console.error('Failed to dispatch command:', error);
