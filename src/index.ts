@@ -1,4 +1,8 @@
+import 'dotenv/config';
 import { connectWhatsApp } from './whatsapp/connection.js';
+import { SessionManager } from './whatsapp/session-manager.js';
+import { registerMessageLogger } from './events/messages.js';
+import { startTelegramBot } from './telegram/bot.js';
 import { IdentityService } from './services/identity/identity.service.js';
 import { RpgService } from './services/rpg/rpg.service.js';
 import { PlayerRepository } from './services/rpg/player.repository.js';
@@ -29,6 +33,26 @@ rpgService.setNameResolver((userId) => {
   const identity = identityService.getById(userId);
   return identity?.username ?? null;
 });
+
+const sessionManager = new SessionManager({
+  onSocketCreated: (sock) => {
+    registerMessageLogger(sock, identityService, dispatcher);
+  },
+});
+
+try {
+  await sessionManager.restoreSessions();
+} catch (error) {
+  console.error('[sessions] restore failed at boot:', error);
+}
+
+try {
+  void startTelegramBot(sessionManager).catch((error) => {
+    console.error('[telegram] failed to start Telegram bot:', error);
+  });
+} catch (error) {
+  console.error('Failed to start Telegram bot:', error);
+}
 
 try {
   await connectWhatsApp({ identityService, dispatcher });
