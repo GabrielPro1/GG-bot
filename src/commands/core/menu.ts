@@ -11,7 +11,6 @@ const CATEGORY_EMOJI: Record<string, string> = {
 const UNKNOWN_CATEGORY_EMOJI = '📂';
 const OTHER_CATEGORY_KEY = 'other';
 const MENU_COMMAND_NAME = 'menu';
-const COMING_SOON = 'Prossimamente...';
 
 export default {
   name: 'menu',
@@ -42,8 +41,6 @@ export default {
       ...remainingKeys,
     ];
 
-    const placeholderKeys = CATEGORY_ORDER.filter((key) => !grouped.has(key));
-
     const sections: ListSection[] = [];
 
     for (const key of orderedKeys) {
@@ -60,15 +57,6 @@ export default {
       }));
 
       sections.push({ title: `${emoji} ${label}`, rows });
-    }
-
-    for (const key of placeholderKeys) {
-      const emoji = CATEGORY_EMOJI[key] ?? UNKNOWN_CATEGORY_EMOJI;
-      const label = key.toUpperCase();
-      sections.push({
-        title: `${emoji} ${label}`,
-        rows: [{ title: COMING_SOON, rowId: '/menu', description: 'Nessun comando disponibile' }],
-      });
     }
 
     await sendList({

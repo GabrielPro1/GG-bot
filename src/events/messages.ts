@@ -2,14 +2,18 @@ import {
   isJidStatusBroadcast,
   proto,
   generateWAMessageFromContent,
+  prepareWAMessageMedia,
   type WAMessage,
   type WASocket,
 } from '@whiskeysockets/baileys';
+import { readFile } from 'node:fs/promises';
+import { fileURLToPath } from 'node:url';
 import type { CommandDispatcher } from '../commands/dispatcher.js';
 import type { MentionedUser } from '../commands/types.js';
 import type { IdentityService } from '../services/identity/identity.service.js';
 
 const TEXT_PREVIEW_MAX_LENGTH = 100;
+const MENU_IMAGE_PATH = fileURLToPath(new URL('../../assets/menuimage.png', import.meta.url));
 
 interface MessageSummary {
   kind: string;
@@ -68,6 +72,20 @@ function summarizeMessage(message: WAMessage['message']): MessageSummary {
     const rowId = message.listResponseMessage.singleSelectReply?.selectedRowId;
     return { kind: 'list-response', preview: rowId ? truncateText(rowId) : undefined };
   }
+  if (message.interactiveResponseMessage) {
+    const paramsJson =
+      message.interactiveResponseMessage.nativeFlowResponseMessage?.paramsJson;
+    if (paramsJson) {
+      try {
+        const params = JSON.parse(paramsJson);
+        const id: string | undefined = params.selected_id ?? params.id;
+        return { kind: 'interactive-response', preview: id ? truncateText(id) : truncateText(paramsJson) };
+      } catch {
+        return { kind: 'interactive-response', preview: truncateText(paramsJson) };
+      }
+    }
+    return { kind: 'interactive-response' };
+  }
   const firstSetKey = Object.keys(message).find(
     (key) => (message as Record<string, unknown>)[key] != null,
   );
@@ -79,6 +97,16 @@ function extractText(message: WAMessage['message']): string | null {
   if (message?.extendedTextMessage?.text) return message.extendedTextMessage.text;
   if (message?.listResponseMessage?.singleSelectReply?.selectedRowId) {
     return message.listResponseMessage.singleSelectReply.selectedRowId;
+  }
+  if (message?.interactiveResponseMessage?.nativeFlowResponseMessage?.paramsJson) {
+    try {
+      const params = JSON.parse(
+        message.interactiveResponseMessage.nativeFlowResponseMessage.paramsJson,
+      );
+      return params.selected_id ?? params.id ?? null;
+    } catch {
+      return null;
+    }
   }
   return null;
 }
@@ -127,32 +155,59 @@ export function registerMessageLogger(
           identity,
           reply: (replyText) =>
             sock.sendMessage(chatJid, { text: replyText }).then(() => undefined),
-          sendList: (options) => {
-            const listMessage = proto.Message.create({
-              listMessage: {
-                title: options.title,
-                description: options.text,
-                buttonText: options.buttonText,
-                footerText: options.footer,
-                listType: proto.Message.ListMessage.ListType.SINGLE_SELECT,
-                sections: options.sections.map((section) => ({
+          sendList: async (options) => {
+            const imageBuffer = await readFile(MENU_IMAGE_PATH);
+            const { imageMessage } = await prepareWAMessageMedia(
+              { image: imageBuffer },
+              { upload: sock.waUploadToServer, mediaUploadTimeoutMs: 30_000 },
+            );
+            const cards = options.sections.map((section) => {
+              const buttonParamsJson = JSON.stringify({
+                title: options.buttonText,
+                sections: [
+                  {
+                    title: section.title,
+                    rows: section.rows.map((row) => ({
+                      title: row.title,
+                      description: row.description,
+                      id: row.rowId,
+                    })),
+                  },
+                ],
+              });
+              return {
+                header: {
                   title: section.title,
-                  rows: section.rows.map((row) => ({
-                    title: row.title,
-                    rowId: row.rowId,
-                    description: row.description,
-                  })),
-                })),
+                  hasMediaAttachment: true,
+                  imageMessage,
+                },
+                body: { text: `${section.rows.length} comandi disponibili` },
+                footer: { text: options.footer },
+                nativeFlowMessage: {
+                  buttons: [{ name: 'single_select', buttonParamsJson }],
+                  messageVersion: 1,
+                },
+              };
+            });
+            const interactiveMsg = proto.Message.create({
+              interactiveMessage: {
+                carouselMessage: {
+                  cards,
+                  messageVersion: 1,
+                  carouselCardType:
+                    proto.Message.InteractiveMessage.CarouselMessage.CarouselCardType
+                      .HSCROLL_CARDS,
+                },
+                body: { text: options.text },
+                footer: { text: options.footer },
               },
             });
-            const fullMsg = generateWAMessageFromContent(chatJid, listMessage, {
+            const fullMsg = generateWAMessageFromContent(chatJid, interactiveMsg, {
               userJid: sock.user?.id ?? '',
             });
-            return sock
-              .relayMessage(chatJid, fullMsg.message!, {
-                messageId: fullMsg.key.id!,
-              })
-              .then(() => undefined);
+            await sock.relayMessage(chatJid, fullMsg.message!, {
+              messageId: fullMsg.key.id!,
+            });
           },
           mentions: resolveMentions(identityService, message.message),
         })
