@@ -42,7 +42,6 @@ function parseAmount(raw: string | undefined): number | null {
 
 export default {
   name: 'aggiungimonete',
-  aliases: ['addcoins', 'daimonete'],
   category: 'owner',
   emoji: '👑',
   ownerOnly: true,

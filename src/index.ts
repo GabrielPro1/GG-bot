@@ -7,6 +7,7 @@ import { IdentityService } from './services/identity/identity.service.js';
 import { RpgService } from './services/rpg/rpg.service.js';
 import { PlayerRepository } from './services/rpg/player.repository.js';
 import { CommandRegistry } from './commands/registry.js';
+import { COMMAND_ALIASES } from './commands/aliases.js';
 import { CommandDispatcher } from './commands/dispatcher.js';
 import { CommandLoader } from './commands/loader.js';
 import { loadOwnerServiceFromEnv } from './config/owners.js';
@@ -20,7 +21,7 @@ console.log('GG Bot starting...');
 const db = openDatabase();
 const playerRepo = new PlayerRepository(db);
 
-const registry = new CommandRegistry();
+const registry = new CommandRegistry(COMMAND_ALIASES);
 const rpgService = new RpgService(playerRepo);
 const ownerService = loadOwnerServiceFromEnv();
 const aiService = new AIService(

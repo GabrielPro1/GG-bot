@@ -42,7 +42,6 @@ function parseAmount(raw: string | undefined): number | null {
 
 export default {
   name: 'rimuovimonete',
-  aliases: ['rmcoins', 'togliamonete'],
   category: 'owner',
   emoji: '👑',
   ownerOnly: true,

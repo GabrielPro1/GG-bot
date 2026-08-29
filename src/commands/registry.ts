@@ -12,16 +12,24 @@ function keyOf(value: string): string {
 export class CommandRegistry {
   private readonly commandsByName = new Map<string, Command>();
   private readonly canonicalByKey = new Map<string, string>();
+  private readonly aliases: Readonly<Record<string, readonly string[]>>;
+
+  constructor(aliases: Readonly<Record<string, readonly string[]>> = {}) {
+    this.aliases = aliases;
+  }
 
   register(command: Command): RegistrationResult {
     const nameKey = keyOf(command.name);
     if (nameKey.length === 0) {
       return { ok: false, error: 'command name is empty' };
     }
-    const aliasKeys = (command.aliases ?? [])
+    const inlineAliases = command.aliases ?? [];
+    const externalAliases = this.aliases[nameKey] ?? [];
+    const aliasKeys = [...inlineAliases, ...externalAliases]
       .map((alias) => keyOf(alias))
       .filter((key) => key.length > 0);
-    const requestedKeys = [nameKey, ...aliasKeys];
+    const uniqueAliasKeys = [...new Set(aliasKeys)];
+    const requestedKeys = [nameKey, ...uniqueAliasKeys];
     const conflicts = requestedKeys.filter((key) => this.canonicalByKey.has(key));
     if (conflicts.length > 0) {
       return {

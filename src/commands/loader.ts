@@ -7,7 +7,7 @@ import type { Command } from './types.js';
 
 const LOG_PREFIX = '[commands]';
 const DEBOUNCE_MS = 150;
-const INFRA_BASENAMES = new Set(['types', 'registry', 'loader', 'dispatcher']);
+const INFRA_BASENAMES = new Set(['types', 'registry', 'loader', 'dispatcher', 'aliases']);
 const IGNORED_PREFIXES = ['.', '#', '~'];
 const IGNORED_SUFFIXES = ['.tmp', '.swp', '.bak'];
 

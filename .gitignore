@@ -12,7 +12,9 @@ dist/
 # WhatsApp authentication/session data
 auth/
 
-# SQLite database
+# SQLite database + runtime data (RPG players, identities, AI chat history:
+# ai_chats / ai_messages tables). Contains sensitive user conversation data;
+# NEVER commit anything under data/.
 data/
 
 # Backups

@@ -38,7 +38,6 @@ function renderBox(title: string, lines: readonly string[]): string {
 
 export default {
   name: 'ai',
-  aliases: ['gemini'],
   category: 'ai',
   emoji: '🤖',
   description: 'Chatta con l\'AI (Gemini)',
