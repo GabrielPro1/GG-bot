@@ -1,9 +1,10 @@
 import type { Command, ListRow, ListSection } from '../types.js';
 
-const CATEGORY_ORDER: readonly string[] = ['core', 'rpg', 'fun', 'group', 'owner'];
+const CATEGORY_ORDER: readonly string[] = ['core', 'rpg', 'ai', 'fun', 'group', 'owner'];
 const CATEGORY_EMOJI: Record<string, string> = {
   core: '⚙️',
   rpg: '🎮',
+  ai: '🤖',
   fun: '😂',
   group: '🛡️',
   owner: '👑',

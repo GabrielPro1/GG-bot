@@ -1,5 +1,6 @@
 import type { CombatResult } from '../../services/rpg/types.js';
 import type { Command } from '../types.js';
+import { resolveTargetUser } from '../target.js';
 
 const SIGNATURE = '╰━━━━━━━━ ✨ GG BOT ✨ ━━━━━━━━╯';
 
@@ -8,11 +9,15 @@ const USAGE = [
   '┃      ⚔️ DUELLO PvP      ┃',
   '╰━━━━━━━━━━━━━━━━━━━━━━━━━━╯',
   '',
-  '⚠️ Devi menzionare un avversario.',
+  '⚠️ Devi indicare un avversario:',
   '',
   '⚔️ Usa:',
   '',
   '/combatti <utente>',
+  '',
+  '💡 Puoi indicare l\'utente:',
+  '   • menzionandolo  (vince se presente)',
+  '   • rispondendo a un suo messaggio',
   '',
   SIGNATURE,
 ].join('\n');
@@ -131,20 +136,20 @@ export default {
   category: 'rpg',
   emoji: '⚔️',
   description: 'Sfida un altro giocatore',
-  execute: async ({ identity, rpg, mentions, reply }) => {
-    const firstMention = mentions[0];
-    if (!firstMention) {
+  execute: async ({ identity, rpg, mentions, quoted, reply }) => {
+    const target = resolveTargetUser(mentions, quoted);
+    if (!target) {
       await reply(USAGE);
       return;
     }
 
-    if (!firstMention.identity) {
+    if (!target.identity) {
       await reply(renderError('❓ NON TROVATO', '❌ Non riesco a identificare questo giocatore.'));
       return;
     }
 
     const attackerIdentity = identity;
-    const defenderIdentity = firstMention.identity;
+    const defenderIdentity = target.identity;
 
     if (defenderIdentity.userId === attackerIdentity.userId) {
       await reply(renderError('😅 ATTENTO', '😅 Non puoi combattere contro te stesso!'));

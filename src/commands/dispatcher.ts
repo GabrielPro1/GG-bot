@@ -1,5 +1,7 @@
 import type { WaUserIdentity } from '../services/identity/types.js';
 import type { RpgServiceView } from '../services/rpg/types.js';
+import type { AIServiceView } from '../services/ai/types.js';
+import { disabledAiView } from '../services/ai/ai.service.js';
 import type { CommandContext, MentionedUser } from './types.js';
 import type { CommandRegistry } from './registry.js';
 import type { OwnerService } from '../config/owners.js';
@@ -17,15 +19,18 @@ export interface CommandInvocation {
 export class CommandDispatcher {
   private readonly registry: CommandRegistry;
   private readonly rpg: RpgServiceView;
+  private readonly ai: AIServiceView;
   private readonly ownerService: OwnerService;
 
   constructor(
     registry: CommandRegistry,
     rpg: RpgServiceView,
     ownerService: OwnerService,
+    ai: AIServiceView = disabledAiView(),
   ) {
     this.registry = registry;
     this.rpg = rpg;
+    this.ai = ai;
     this.ownerService = ownerService;
   }
 
@@ -54,6 +59,7 @@ export class CommandDispatcher {
       ...context,
       registry: this.registry,
       rpg: this.rpg,
+      ai: this.ai,
       mentions: context.mentions ?? [],
       quoted: context.quoted ?? null,
     });

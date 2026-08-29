@@ -11,6 +11,9 @@ import { CommandDispatcher } from './commands/dispatcher.js';
 import { CommandLoader } from './commands/loader.js';
 import { loadOwnerServiceFromEnv } from './config/owners.js';
 import { openDatabase } from './db/index.js';
+import { AiRepository } from './services/ai/ai.repository.js';
+import { AIService } from './services/ai/ai.service.js';
+import { createGeminiProviderFromEnv } from './services/ai/gemini.provider.js';
 
 console.log('GG Bot starting...');
 
@@ -20,7 +23,11 @@ const playerRepo = new PlayerRepository(db);
 const registry = new CommandRegistry();
 const rpgService = new RpgService(playerRepo);
 const ownerService = loadOwnerServiceFromEnv();
-const dispatcher = new CommandDispatcher(registry, rpgService, ownerService);
+const aiService = new AIService(
+  new AiRepository(db),
+  createGeminiProviderFromEnv(),
+);
+const dispatcher = new CommandDispatcher(registry, rpgService, ownerService, aiService);
 const loader = new CommandLoader(registry);
 
 try {
@@ -38,7 +45,7 @@ rpgService.setNameResolver((userId) => {
 
 const sessionManager = new SessionManager({
   onSocketCreated: (sock) => {
-    registerMessageLogger(sock, identityService, dispatcher);
+    registerMessageLogger(sock, identityService, dispatcher, aiService);
   },
 });
 
@@ -57,7 +64,7 @@ try {
 }
 
 try {
-  await connectWhatsApp({ identityService, dispatcher });
+  await connectWhatsApp({ identityService, dispatcher, ai: aiService });
 } catch (error) {
   console.error('Failed to start GG Bot:', error);
   process.exitCode = 1;

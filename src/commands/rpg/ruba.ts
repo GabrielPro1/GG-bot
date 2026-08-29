@@ -1,5 +1,6 @@
 import type { RobResult } from '../../services/rpg/types.js';
 import type { Command } from '../types.js';
+import { resolveTargetUser } from '../target.js';
 
 const SIGNATURE = '╰━━━━━━━━ ✨ GG BOT ✨ ━━━━━━━━╯';
 
@@ -8,9 +9,13 @@ const USAGE = [
   '┃       🥷 RAPINA       ┃',
   '╰━━━━━━━━━━━━━━━━━━━━━━━━━━╯',
   '',
-  '⚠️ Devi menzionare una vittima.',
+  '⚠️ Devi indicare una vittima.',
   '',
   'Uso: /ruba @utente',
+  '',
+  '💡 Puoi indicare l\'utente:',
+  '   • menzionandolo  (vince se presente)',
+  '   • rispondendo a un suo messaggio',
   '',
   SIGNATURE,
 ].join('\n');
@@ -121,14 +126,14 @@ export default {
   category: 'rpg',
   emoji: '🥷',
   description: 'Tenta di rubare monete da un utente menzionato',
-  execute: async ({ identity, rpg, mentions, reply }) => {
-    const firstMention = mentions[0];
-    if (!firstMention) {
+  execute: async ({ identity, rpg, mentions, quoted, reply }) => {
+    const target = resolveTargetUser(mentions, quoted);
+    if (!target) {
       await reply(USAGE);
       return;
     }
 
-    if (!firstMention.identity) {
+    if (!target.identity) {
       await reply(
         renderVictimError(
           '❓ NON TROVATO',
@@ -139,7 +144,7 @@ export default {
     }
 
     const thiefIdentity = identity;
-    const victimIdentity = firstMention.identity;
+    const victimIdentity = target.identity;
     const result = rpg.rob(thiefIdentity.userId, victimIdentity.userId);
 
     if (result.outcome === 'self_target') {

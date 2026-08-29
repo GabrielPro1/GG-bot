@@ -1,4 +1,5 @@
 import type { Command } from '../types.js';
+import { resolveTargetUser } from '../target.js';
 
 const SIGNATURE = '╰━━━━━━━━ ✨ GG BOT ✨ ━━━━━━━━╯';
 
@@ -55,7 +56,7 @@ export default {
       return;
     }
 
-    const target = mentions[0] ?? quoted;
+    const target = resolveTargetUser(mentions, quoted);
     if (!target) {
       await reply(USAGE);
       return;

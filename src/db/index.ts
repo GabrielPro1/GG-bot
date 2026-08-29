@@ -8,7 +8,7 @@ const __dirname = dirname(__filename);
 const PROJECT_ROOT = resolve(__dirname, '..', '..');
 
 const DB_PATH = resolve(PROJECT_ROOT, 'data', 'gg-bot.db');
-const CURRENT_SCHEMA_VERSION = 1;
+const CURRENT_SCHEMA_VERSION = 2;
 
 const SCHEMA_V1 = `
 CREATE TABLE IF NOT EXISTS identities (
@@ -79,8 +79,36 @@ CREATE TABLE IF NOT EXISTS player_missions (
 );
 `;
 
+const SCHEMA_V2 = `
+CREATE TABLE IF NOT EXISTS ai_chats (
+  id          INTEGER PRIMARY KEY AUTOINCREMENT,
+  user_id     TEXT NOT NULL,
+  chat_number INTEGER NOT NULL,
+  created_at  TEXT NOT NULL DEFAULT (datetime('now')),
+  updated_at  TEXT NOT NULL DEFAULT (datetime('now')),
+  UNIQUE (user_id, chat_number),
+  FOREIGN KEY (user_id) REFERENCES identities(user_id) ON DELETE CASCADE
+);
+
+CREATE TABLE IF NOT EXISTS ai_messages (
+  id         INTEGER PRIMARY KEY AUTOINCREMENT,
+  chat_id    INTEGER NOT NULL,
+  role       TEXT NOT NULL CHECK (role IN ('user', 'assistant')),
+  content    TEXT NOT NULL,
+  created_at TEXT NOT NULL DEFAULT (datetime('now')),
+  FOREIGN KEY (chat_id) REFERENCES ai_chats(id) ON DELETE CASCADE
+);
+
+CREATE INDEX IF NOT EXISTS idx_ai_messages_chat
+  ON ai_messages(chat_id, id);
+
+CREATE INDEX IF NOT EXISTS idx_ai_chats_user
+  ON ai_chats(user_id, chat_number);
+`;
+
 const SCHEMA_VERSIONS: Record<number, string> = {
   1: SCHEMA_V1,
+  2: SCHEMA_V2,
 };
 
 export function openDatabase(dbPath: string = DB_PATH): Database.Database {
@@ -100,9 +128,11 @@ function initSchema(db: Database.Database): void {
   const version = db.pragma('user_version', { simple: true }) as number;
 
   if (version === 0) {
-    const schema = SCHEMA_VERSIONS[1];
-    if (!schema) throw new Error('Schema v1 not found');
-    db.exec(schema);
+    for (let v = 1; v <= CURRENT_SCHEMA_VERSION; v++) {
+      const schema = SCHEMA_VERSIONS[v];
+      if (!schema) throw new Error(`Schema v${v} not found`);
+      db.exec(schema);
+    }
     db.pragma(`user_version = ${CURRENT_SCHEMA_VERSION}`);
     console.log(`[db] Schema initialized (v${CURRENT_SCHEMA_VERSION})`);
   } else if (version < CURRENT_SCHEMA_VERSION) {

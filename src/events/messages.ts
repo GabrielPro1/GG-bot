@@ -3,6 +3,7 @@ import {
   proto,
   generateWAMessageFromContent,
   prepareWAMessageMedia,
+  downloadMediaMessage,
   type WAMessage,
   type WASocket,
 } from '@whiskeysockets/baileys';
@@ -11,9 +12,15 @@ import { fileURLToPath } from 'node:url';
 import type { CommandDispatcher } from '../commands/dispatcher.js';
 import type { MentionedUser } from '../commands/types.js';
 import type { IdentityService } from '../services/identity/identity.service.js';
+import type { AIServiceView } from '../services/ai/types.js';
+import { disabledAiView } from '../services/ai/ai.service.js';
+import { handleAiModeMessage, type AiModeImage } from '../services/ai/ai-mode.js';
 
 const TEXT_PREVIEW_MAX_LENGTH = 100;
 const MENU_IMAGE_PATH = fileURLToPath(new URL('../../assets/menuimage.png', import.meta.url));
+/** Upper bound for image bytes sent to Gemini (inline data limit is ~20MB). */
+const MAX_AI_IMAGE_BYTES = 20_000_000;
+const AI_IMAGE_ERROR = '⚠️ Non è stato possibile scaricare l\'immagine. Riprova.';
 
 interface MessageSummary {
   kind: string;
@@ -125,14 +132,54 @@ function extractText(message: WAMessage['message']): string | null {
   return null;
 }
 
+function isImageMessage(message: WAMessage['message']): boolean {
+  return message?.imageMessage != null;
+}
+
+/**
+ * Downloads the image bytes of a received message in memory (never persisted to
+ * disk). Returns null when the message has no image, is too large, or fails to
+ * download. Does NOT log binary content or credentials.
+ */
+async function tryDownloadImage(
+  message: WAMessage,
+): Promise<AiModeImage | null> {
+  const imageMessage = message.message?.imageMessage;
+  if (!imageMessage) return null;
+
+  if (typeof imageMessage.fileLength === 'number' && imageMessage.fileLength > MAX_AI_IMAGE_BYTES) {
+    return null;
+  }
+
+  try {
+    const buffer = await downloadMediaMessage(message, 'buffer', {});
+    if (!buffer || buffer.byteLength === 0) return null;
+    if (buffer.byteLength > MAX_AI_IMAGE_BYTES) return null;
+    return {
+      mimeType: imageMessage.mimetype ?? 'image/jpeg',
+      data: buffer,
+    };
+  } catch (error) {
+    console.error('[ai] failed to download image:', error instanceof Error ? error.message : error);
+    return null;
+  }
+}
+
 export function registerMessageLogger(
   sock: WASocket,
   identityService: IdentityService,
   dispatcher: CommandDispatcher,
+  ai: AIServiceView = disabledAiView(),
 ): void {
   sock.ev.on('messages.upsert', ({ messages, type }) => {
     for (const message of messages) {
-      if (message.key.fromMe) continue;
+      void handleMessage(message, type);
+    }
+  });
+
+  async function handleMessage(message: WAMessage, type: string): Promise<void> {
+    try {
+      if (message.key.fromMe) return;
 
       const summary = summarizeMessage(message.message);
       const origin = type === 'notify' ? 'incoming' : `history (${type})`;
@@ -158,13 +205,35 @@ export function registerMessageLogger(
       console.log(lines.join('\n'));
 
       const chatJid = message.key.remoteJid;
-      if (!chatJid || isJidStatusBroadcast(chatJid)) continue;
-      if (!identity) continue;
+      if (!chatJid || isJidStatusBroadcast(chatJid)) return;
+      if (!identity) return;
 
       const text = extractText(message.message);
-      if (!text || type !== 'notify') continue;
 
-      void dispatcher
+      if (ai.enabled && ai.activeChat(identity.userId) !== null) {
+        let image: AiModeImage | null = null;
+        if (isImageMessage(message.message) && type === 'notify') {
+          image = await tryDownloadImage(message);
+          if (image === null) {
+            await sock.sendMessage(chatJid, { text: AI_IMAGE_ERROR });
+            return;
+          }
+        }
+
+        const routed = await handleAiModeMessage({
+          ai,
+          userId: identity.userId,
+          text,
+          image,
+          reply: (replyText) =>
+            sock.sendMessage(chatJid, { text: replyText }).then(() => undefined),
+        });
+        if (routed === 'ai') return;
+      }
+
+      if (!text || type !== 'notify') return;
+
+      await dispatcher
         .handle(text, {
           identity,
           reply: (replyText) =>
@@ -232,10 +301,9 @@ export function registerMessageLogger(
           },
           mentions: resolveMentions(identityService, message.message),
           quoted: resolveQuoted(identityService, message.message),
-        })
-        .catch((error: unknown) => {
-          console.error('Failed to dispatch command:', error);
         });
+    } catch (error: unknown) {
+      console.error('Failed to process message:', error);
     }
-  });
+  }
 }

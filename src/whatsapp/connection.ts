@@ -10,6 +10,7 @@ import qrcode from 'qrcode-terminal';
 import { createAuthState } from './auth.js';
 import { registerMessageLogger } from '../events/messages.js';
 import type { CommandDispatcher } from '../commands/dispatcher.js';
+import type { AIServiceView } from '../services/ai/types.js';
 import type { IdentityService } from '../services/identity/identity.service.js';
 
 const MAX_RECONNECT_ATTEMPTS = 5;
@@ -26,6 +27,7 @@ const NON_RECOVERABLE_REASONS: ReadonlySet<number> = new Set([
 export interface WhatsAppConnectionOptions {
   identityService: IdentityService;
   dispatcher: CommandDispatcher;
+  ai: AIServiceView;
   logLevel?: string;
 }
 
@@ -85,7 +87,7 @@ export async function connectWhatsApp(options: WhatsAppConnectionOptions): Promi
 
   sock.ev.on('creds.update', saveCreds);
 
-  registerMessageLogger(sock, options.identityService, options.dispatcher);
+  registerMessageLogger(sock, options.identityService, options.dispatcher, options.ai);
 
   sock.ev.on('connection.update', (update) => {
     if (update.qr) {

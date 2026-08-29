@@ -1,5 +1,4 @@
 -- GG Bot SQLite Schema v1
-
 CREATE TABLE IF NOT EXISTS identities (
   user_id   TEXT PRIMARY KEY,
   lid_jid   TEXT,
@@ -66,3 +65,29 @@ CREATE TABLE IF NOT EXISTS player_missions (
   PRIMARY KEY (user_id, mission_id, day_key),
   FOREIGN KEY (user_id) REFERENCES players(user_id) ON DELETE CASCADE
 );
+
+-- AI chat conversations (v2). chat_number is a per-user progressive id (1, 2, 3...).
+CREATE TABLE IF NOT EXISTS ai_chats (
+  id          INTEGER PRIMARY KEY AUTOINCREMENT,
+  user_id     TEXT NOT NULL,
+  chat_number INTEGER NOT NULL,
+  created_at  TEXT NOT NULL DEFAULT (datetime('now')),
+  updated_at  TEXT NOT NULL DEFAULT (datetime('now')),
+  UNIQUE (user_id, chat_number),
+  FOREIGN KEY (user_id) REFERENCES identities(user_id) ON DELETE CASCADE
+);
+
+CREATE TABLE IF NOT EXISTS ai_messages (
+  id         INTEGER PRIMARY KEY AUTOINCREMENT,
+  chat_id    INTEGER NOT NULL,
+  role       TEXT NOT NULL CHECK (role IN ('user', 'assistant')),
+  content    TEXT NOT NULL,
+  created_at TEXT NOT NULL DEFAULT (datetime('now')),
+  FOREIGN KEY (chat_id) REFERENCES ai_chats(id) ON DELETE CASCADE
+);
+
+CREATE INDEX IF NOT EXISTS idx_ai_messages_chat
+  ON ai_messages(chat_id, id);
+
+CREATE INDEX IF NOT EXISTS idx_ai_chats_user
+  ON ai_chats(user_id, chat_number);
