@@ -1,9 +1,6 @@
 # Dependencies
 node_modules/
 
-# Build output
-dist/
-
 # Environment variables / secrets
 .env
 .env.*
@@ -33,3 +30,6 @@ Desktop.ini
 # Editor folders
 .vscode/
 .idea/
+
+# Local agent instructions (kept out of version control)
+AGENTS.md
