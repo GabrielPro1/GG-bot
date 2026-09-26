@@ -1,7 +1,7 @@
 import { getAllItems } from '../../services/rpg/items/catalog.js';
 import { getRarityInfo } from '../../services/rpg/items/rarity.js';
 import type { RpgItem } from '../../services/rpg/items/types.js';
-import type { Command, ListRow, ListSection } from '../types.js';
+import type { Command } from '../types.js';
 
 const SIGNATURE = '╰━━━━━━━━ ✨ GG BOT ✨ ━━━━━━━━╯';
 
@@ -11,21 +11,15 @@ function isPurchasable(item: RpgItem): boolean {
 }
 
 /**
- * Builds an interactive row for a purchasable item. Tapping the row triggers
- * the real `/acquista <itemId>` command through the existing dispatcher flow,
- * so no purchase logic is duplicated here.
+ * Builds a quick-reply button for a purchasable item. Its id triggers the real
+ * `/acquista <itemId>` command through the existing dispatcher flow, so no
+ * purchase logic is duplicated here and no user identifier is embedded.
  */
-function itemToBuyRow(item: RpgItem): ListRow {
+function itemToBuyButton(item: RpgItem): { displayText: string; id: string } {
   return {
-    title: `${item.emoji} Compra ${item.name}`,
-    description: `🪙 ${item.price} monete`,
-    rowId: `/acquista ${item.id}`,
+    displayText: `${item.emoji} Compra ${item.name}`,
+    id: `/acquista ${item.id}`,
   };
-}
-
-function shopSection(): ListSection {
-  const rows = getAllItems().filter(isPurchasable).map(itemToBuyRow);
-  return { title: '🛒 NEGOZIO RPG', rows };
 }
 
 export default {
@@ -33,7 +27,7 @@ export default {
   category: 'rpg',
   emoji: '🛒',
   description: 'Visualizza il negozio RPG',
-  execute: async ({ reply, sendList }) => {
+  execute: async ({ reply, sendButtons }) => {
     const itemBlocks = getAllItems().map((item) => {
       const rarity = getRarityInfo(item.rarity);
       return [
@@ -57,12 +51,12 @@ export default {
       SIGNATURE,
     ].join('\n'));
 
-    await sendList({
-      text: 'Tocca un oggetto per comprarlo.',
+    const buyButtons = getAllItems().filter(isPurchasable).map(itemToBuyButton);
+    await sendButtons?.({
+      text: '🛒 Tocca un bottone per comprare un oggetto.',
       title: '🛒 NEGOZIO RPG',
       footer: 'Usa /negozio per aggiornare',
-      buttonText: '🛒 Compra',
-      sections: [shopSection()],
+      buttons: buyButtons,
     });
   },
 } satisfies Command;

@@ -1,11 +1,14 @@
 import {
+  isJidGroup,
   isJidStatusBroadcast,
   proto,
   generateWAMessageFromContent,
   prepareWAMessageMedia,
   downloadMediaMessage,
+  normalizeMessageContent,
   type WAMessage,
   type WASocket,
+  type BinaryNode,
 } from '@whiskeysockets/baileys';
 import { readFile } from 'node:fs/promises';
 import { fileURLToPath } from 'node:url';
@@ -107,6 +110,12 @@ function summarizeMessage(message: WAMessage['message']): MessageSummary {
     }
     return { kind: 'interactive-response' };
   }
+  if (message.templateButtonReplyMessage?.selectedId) {
+    return {
+      kind: 'template-button-reply',
+      preview: truncateText(message.templateButtonReplyMessage.selectedId),
+    };
+  }
   const firstSetKey = Object.keys(message).find(
     (key) => (message as Record<string, unknown>)[key] != null,
   );
@@ -114,20 +123,24 @@ function summarizeMessage(message: WAMessage['message']): MessageSummary {
 }
 
 function extractText(message: WAMessage['message']): string | null {
-  if (message?.conversation) return message.conversation;
-  if (message?.extendedTextMessage?.text) return message.extendedTextMessage.text;
-  if (message?.listResponseMessage?.singleSelectReply?.selectedRowId) {
-    return message.listResponseMessage.singleSelectReply.selectedRowId;
+  const content = normalizeMessageContent(message);
+  if (content?.conversation) return content.conversation;
+  if (content?.extendedTextMessage?.text) return content.extendedTextMessage.text;
+  if (content?.listResponseMessage?.singleSelectReply?.selectedRowId) {
+    return content.listResponseMessage.singleSelectReply.selectedRowId;
   }
-  if (message?.interactiveResponseMessage?.nativeFlowResponseMessage?.paramsJson) {
+  if (content?.interactiveResponseMessage?.nativeFlowResponseMessage?.paramsJson) {
     try {
       const params = JSON.parse(
-        message.interactiveResponseMessage.nativeFlowResponseMessage.paramsJson,
+        content.interactiveResponseMessage.nativeFlowResponseMessage.paramsJson,
       );
       return params.selected_id ?? params.id ?? null;
     } catch {
       return null;
     }
+  }
+  if (content?.templateButtonReplyMessage?.selectedId) {
+    return content.templateButtonReplyMessage.selectedId;
   }
   return null;
 }
@@ -210,6 +223,24 @@ export function registerMessageLogger(
 
       const text = extractText(message.message);
 
+      {
+        const topKeys = Object.keys(message.message ?? {});
+        const resp = message.message?.interactiveResponseMessage;
+        const nativeResp = resp?.nativeFlowResponseMessage;
+        const dbg = [
+          `[dbg-click] messageType=${summary.kind}`,
+          `topKeys=${JSON.stringify(topKeys)}`,
+          `nativeFlow.name=${nativeResp?.name ?? '-'}`,
+          `nativeFlow.version=${nativeResp?.version ?? '-'}`,
+          `nativeFlow.paramsJson=${nativeResp?.paramsJson ?? '-'}`,
+          `extractedText=${text ?? '-'}`,
+          `upsertType=${type}`,
+          `fromMe=${message.key.fromMe}`,
+          `hasIdentity=${identity !== null}`,
+        ];
+        console.log(dbg.join(' | '));
+      }
+
       if (ai.enabled && ai.activeChat(identity.userId) !== null) {
         let image: AiModeImage | null = null;
         if (isImageMessage(message.message) && type === 'notify') {
@@ -231,7 +262,12 @@ export function registerMessageLogger(
         if (routed === 'ai') return;
       }
 
-      if (!text || type !== 'notify') return;
+      if (!text || type !== 'notify') {
+        console.log(
+          `[dbg-click] DROPPED text=${text ?? '(null)'} type=${type} id=${message.key.id ?? '-'}`,
+        );
+        return;
+      }
 
       await dispatcher
         .handle(text, {
@@ -297,6 +333,65 @@ export function registerMessageLogger(
             });
             await sock.relayMessage(chatJid, fullMsg.message!, {
               messageId: fullMsg.key.id!,
+            });
+          },
+          sendButtons: async (options) => {
+            const buttonParamsJson = options.buttons
+              .map((button) => ({
+                name: 'quick_reply',
+                buttonParamsJson: JSON.stringify({
+                  display_text: button.displayText,
+                  id: button.id,
+                }),
+              }))
+              .map((button) =>
+                proto.Message.InteractiveMessage.NativeFlowMessage.NativeFlowButton.create(
+                  button,
+                ),
+              );
+
+            const interactiveMessage = proto.Message.InteractiveMessage.create({
+              body: proto.Message.InteractiveMessage.Body.create({
+                text: options.text,
+              }),
+              footer: proto.Message.InteractiveMessage.Footer.create({
+                text: options.footer,
+              }),
+              nativeFlowMessage:
+                proto.Message.InteractiveMessage.NativeFlowMessage.create({
+                  buttons: buttonParamsJson,
+                  messageParamsJson: '{}',
+                  messageVersion: 1,
+                }),
+            });
+
+            const fullMsg = generateWAMessageFromContent(
+              chatJid,
+              { interactiveMessage },
+              { userJid: sock.user?.id ?? '' },
+            );
+
+            const bizNode: BinaryNode = {
+              tag: 'biz',
+              attrs: {},
+              content: [
+                {
+                  tag: 'interactive',
+                  attrs: { type: 'native_flow', v: '1' },
+                  content: [
+                    { tag: 'native_flow', attrs: { v: '9', name: 'mixed' } },
+                  ],
+                },
+              ],
+            };
+            const botNode: BinaryNode = { tag: 'bot', attrs: { biz_bot: '1' } };
+            const additionalNodes = isJidGroup(chatJid)
+              ? [bizNode]
+              : [bizNode, botNode];
+
+            await sock.relayMessage(chatJid, fullMsg.message!, {
+              messageId: fullMsg.key.id!,
+              additionalNodes,
             });
           },
           mentions: resolveMentions(identityService, message.message),

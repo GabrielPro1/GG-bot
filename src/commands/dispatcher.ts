@@ -12,6 +12,7 @@ export interface CommandInvocation {
   identity: WaUserIdentity;
   reply: CommandContext['reply'];
   sendList: CommandContext['sendList'];
+  sendButtons?: CommandContext['sendButtons'];
   mentions?: readonly MentionedUser[];
   quoted?: MentionedUser | null;
 }

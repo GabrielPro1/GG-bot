@@ -39,11 +39,11 @@ export type CommandAliasesMap = Readonly<Record<string, readonly string[]>>;
 export const COMMAND_ALIASES: CommandAliasesMap = {
   ai: ['gemini'],
   aggiungimonete: ['addcoins', 'daimonete'],
-  rimuovimonete: ['rmcoins', 'togliamonete'],
+  rimuovimonete: ['rmcoins', 'toglimonete'],
   acquista: ['buy'],
   combatti: ['fight'],
   inventario: ['inv', 'bag'],
-  negozio: ['shop'],
+  negozio: ['shop', 'store'],
   portafoglio: ['wallet'],
   ruba: ['rapina', 'steal'],
 };

@@ -24,6 +24,12 @@ export interface CommandContext {
     readonly buttonText: string;
     readonly sections: readonly ListSection[];
   }) => Promise<void>;
+  sendButtons?: (options: {
+    readonly text: string;
+    readonly title: string;
+    readonly footer: string;
+    readonly buttons: readonly { readonly displayText: string; readonly id: string }[];
+  }) => Promise<void>;
   registry: CommandRegistryView;
   rpg: RpgServiceView;
   ai: AIServiceView;

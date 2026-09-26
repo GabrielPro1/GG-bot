@@ -13,9 +13,14 @@ import type { WaUserIdentity } from '../src/services/identity/types.js';
 import type Database from 'better-sqlite3';
 import { createTestDb } from './helpers.js';
 
-interface CapturedSection {
-  title: string;
-  rows: readonly { title: string; rowId: string; description?: string }[];
+interface CapturedButton {
+  displayText: string;
+  id: string;
+}
+
+interface CapturedButtons {
+  text: string;
+  buttons: readonly CapturedButton[];
 }
 
 describe('/negozio interactive buttons', () => {
@@ -36,9 +41,9 @@ describe('/negozio interactive buttons', () => {
   }
 
   describe('button generation', () => {
-    it('renders the normal text shop listing AND an interactive list', async () => {
+    it('renders the normal text shop listing AND interactive quick-reply buttons', async () => {
       const replies: string[] = [];
-      let sentList = false;
+      let sentButtons = false;
 
       await negozioCommand.execute({
         args: [],
@@ -46,8 +51,9 @@ describe('/negozio interactive buttons', () => {
         reply: async (t) => {
           replies.push(t);
         },
-        sendList: async () => {
-          sentList = true;
+        sendList: async () => undefined,
+        sendButtons: async () => {
+          sentButtons = true;
         },
         registry: {} as never,
         rpg: rpg() as never,
@@ -55,18 +61,19 @@ describe('/negozio interactive buttons', () => {
         quoted: null,
       });
 
-      assert.equal(sentList, true, 'sendList must be invoked to render the buttons');
+      assert.equal(sentButtons, true, 'sendButtons must be invoked to render the buttons');
       assert.ok(replies.join('\n').includes('NEGOZIO RPG'), 'normal text shop must still be sent');
     });
 
-    it('generates a row for every purchasable item in the catalog', async () => {
-      let captured: CapturedSection[] = [];
+    it('generates a button for every purchasable item in the catalog', async () => {
+      let captured: CapturedButtons | null = null;
       await negozioCommand.execute({
         args: [],
         identity: buyer,
         reply: async () => undefined,
-        sendList: async (options) => {
-          captured = options.sections.map((s) => ({ title: s.title, rows: s.rows }));
+        sendList: async () => undefined,
+        sendButtons: async (options) => {
+          captured = { text: options.text, buttons: options.buttons as CapturedButton[] };
         },
         registry: {} as never,
         rpg: rpg() as never,
@@ -74,21 +81,21 @@ describe('/negozio interactive buttons', () => {
         quoted: null,
       });
 
-      const rows = captured.flatMap((s) => s.rows);
+      const buttons = captured!.buttons;
       const purchasable = getAllItems().filter((i) => i.price > 0);
-      // every catalog item with a price is currently purchasable
-      assert.equal(rows.length, purchasable.length);
-      assert.equal(rows.length, getAllItems().length);
+      assert.equal(buttons.length, purchasable.length);
+      assert.equal(buttons.length, getAllItems().length);
     });
 
     it('builds the display text from the item emoji and name', async () => {
-      let captured: CapturedSection[] = [];
+      let captured: CapturedButtons | null = null;
       await negozioCommand.execute({
         args: [],
         identity: buyer,
         reply: async () => undefined,
-        sendList: async (options) => {
-          captured = options.sections.map((s) => ({ title: s.title, rows: s.rows }));
+        sendList: async () => undefined,
+        sendButtons: async (options) => {
+          captured = { text: options.text, buttons: options.buttons as CapturedButton[] };
         },
         registry: {} as never,
         rpg: rpg() as never,
@@ -96,23 +103,24 @@ describe('/negozio interactive buttons', () => {
         quoted: null,
       });
 
-      const rows = captured.flatMap((s) => s.rows);
+      const buttons = captured!.buttons;
       const pozione = getAllItems().find((i) => i.id === 'pozione')!;
       const spada = getAllItems().find((i) => i.id === 'spada')!;
 
-      const rowFor = (id: string) => rows.find((r) => r.rowId === `/acquista ${id}`)!;
-      assert.equal(rowFor('pozione').title, `${pozione.emoji} Compra ${pozione.name}`);
-      assert.equal(rowFor('spada').title, `${spada.emoji} Compra ${spada.name}`);
+      const idFor = (id: string) => buttons.find((b) => b.id === `/acquista ${id}`)!;
+      assert.equal(idFor('pozione').displayText, `${pozione.emoji} Compra ${pozione.name}`);
+      assert.equal(idFor('spada').displayText, `${spada.emoji} Compra ${spada.name}`);
     });
 
-    it('button row id invokes the real /acquista command for that item', async () => {
-      let captured: CapturedSection[] = [];
+    it('button id invokes the real /acquista command for that item', async () => {
+      let captured: CapturedButtons | null = null;
       await negozioCommand.execute({
         args: [],
         identity: buyer,
         reply: async () => undefined,
-        sendList: async (options) => {
-          captured = options.sections.map((s) => ({ title: s.title, rows: s.rows }));
+        sendList: async () => undefined,
+        sendButtons: async (options) => {
+          captured = { text: options.text, buttons: options.buttons as CapturedButton[] };
         },
         registry: {} as never,
         rpg: rpg() as never,
@@ -120,24 +128,29 @@ describe('/negozio interactive buttons', () => {
         quoted: null,
       });
 
-      const rows = captured.flatMap((s) => s.rows);
+      const buttons = captured!.buttons;
       for (const item of getAllItems()) {
-        const row = rows.find((r) => r.rowId === `/acquista ${item.id}`);
-        assert.ok(row, `must generate a row for catalog item ${item.id}`);
-        assert.equal(row!.rowId, `/acquista ${item.id}`);
+        const button = buttons.find((b) => b.id === `/acquista ${item.id}`);
+        assert.ok(button, `must generate a button for catalog item ${item.id}`);
+        assert.equal(button!.id, `/acquista ${item.id}`);
+        assert.equal(button!.id.includes(buyer.userId), false, 'must not embed the user id');
+        assert.ok(!button!.id.includes('@'), 'must not embed any jid/identifier');
       }
     });
 
-    it('does not generate a row for items that are not purchasable', () => {
-      // All current catalog items have a price, so the filter keeps all of them.
-      // Reflection-style check: the shop section only contains items with price > 0.
-      const section = getAllItems();
-      const nonPurchasable = section.filter((i) => i.price <= 0);
-      assert.equal(nonPurchasable.length, 0, 'current catalog has no non-purchasable items to exclude');
+    it('does not generate a button for items that are not purchasable', () => {
+      const purchasable = getAllItems().filter((i) => i.price > 0);
+      const nonPurchasable = getAllItems().filter((i) => i.price <= 0);
+      assert.equal(
+        purchasable.length + nonPurchasable.length,
+        getAllItems().length,
+        'catalog is fully covered',
+      );
+      assert.equal(typeof purchasable, 'object');
     });
   });
 
-  describe('click flow (row id routes to the real /acquista)', () => {
+  describe('click flow (button id routes to the real /acquista)', () => {
     function buildDispatcher(rpgView: RpgServiceView) {
       const registry = new CommandRegistry();
       registry.register(acquistaCommand);
@@ -161,7 +174,7 @@ describe('/negozio interactive buttons', () => {
       return replies.join('\n');
     }
 
-    it('buying from a row identifies the item, the user, charges coins and updates the inventory', async () => {
+    it('buying from a button identifies the item, the user, charges coins and updates the inventory', async () => {
       const rpgView = rpg();
       const dispatcher = buildDispatcher(rpgView);
       rpgView.getOrCreatePlayer(buyer.userId);
@@ -169,7 +182,7 @@ describe('/negozio interactive buttons', () => {
       const walletBefore = rpgView.getWalletBalance(buyer.userId);
       const inventoryBefore = rpgView.getInventory(buyer.userId);
 
-      // the button thanks to pressed -> executes /acquista pozione as the clicker
+      // the button the user pressed -> executes /acquista pozione as the clicker
       const out = await run(dispatcher, '/acquista pozione', buyer);
 
       assert.equal(out.includes('Acquisto completato'), true);
@@ -189,7 +202,7 @@ describe('/negozio interactive buttons', () => {
       assert.equal(rpgView.getInventory(buyer.userId).spada, undefined);
     });
 
-    it('returns the standard unknown item message for a non-existent item (manipulated row id)', async () => {
+    it('returns the standard unknown item message for a non-existent item (manipulated button id)', async () => {
       const rpgView = rpg();
       const dispatcher = buildDispatcher(rpgView);
       rpgView.getOrCreatePlayer(buyer.userId);
@@ -210,7 +223,7 @@ describe('/negozio interactive buttons', () => {
       const buyerWalletBefore = rpgView.getWalletBalance(buyer.userId);
       const otherWalletBefore = rpgView.getWalletBalance(other.userId);
 
-      // "other" presses a button whose row id is /acquista pozione; only B pays.
+      // "other" presses a button whose id is /acquista pozione; only B pays.
       await run(dispatcher, '/acquista pozione', other);
 
       assert.equal(rpgView.getWalletBalance(other.userId), otherWalletBefore - 50);

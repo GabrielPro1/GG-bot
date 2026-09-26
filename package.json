@@ -30,5 +30,16 @@
     "pino": "^10.3.1",
     "qrcode": "^1.5.4",
     "qrcode-terminal": "^0.12.0"
-  }
+  },
+  "directories": {
+    "test": "tests"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/GabrielPro1/GG-bot.git"
+  },
+  "bugs": {
+    "url": "https://github.com/GabrielPro1/GG-bot/issues"
+  },
+  "homepage": "https://github.com/GabrielPro1/GG-bot#readme"
 }
