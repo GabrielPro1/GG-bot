@@ -1,4 +1,4 @@
-import { isJidGroup, isJidStatusBroadcast, proto, generateWAMessageFromContent, downloadMediaMessage, normalizeMessageContent, } from '@whiskeysockets/baileys';
+import { isJidGroup, isJidStatusBroadcast, proto, generateWAMessageFromContent, prepareWAMessageMedia, downloadMediaMessage, normalizeMessageContent, } from '@whiskeysockets/baileys';
 import { disabledAiView } from './lib/ai/ai.service.js';
 import { handleAiModeMessage } from './lib/ai/ai-mode.js';
 import { loadMenuImage } from './lib/commands/menu-images.js';
@@ -232,15 +232,17 @@ export function registerMessageLogger(sock, identityService, dispatcher, ai = di
                 identity,
                 reply: (replyText) => sock.sendMessage(chatJid, { text: replyText }).then(() => undefined),
                 sendList: async (options) => {
-                    // The image travels as its own message. WhatsApp silently drops a
-                    // native flow that carries a top level media header, and the carousel
-                    // only ever worked because its headers lived inside the cards.
+                    // A carousel with its header image is the only shape every client renders.
+                    // It needs the biz/bot nodes: without them WhatsApp drops it on Android
+                    // while iOS keeps showing it, which is what made this look device specific.
                     const imageBuffer = await loadMenuImage(options.imageKey);
-                    await sock.sendMessage(chatJid, {
-                        image: imageBuffer,
-                        caption: options.text,
-                        mimetype: 'image/png',
-                    });
+                    let imageMessage;
+                    try {
+                        ({ imageMessage } = await prepareWAMessageMedia({ image: imageBuffer }, { upload: sock.waUploadToServer, mediaUploadTimeoutMs: 30_000 }));
+                    }
+                    catch (error) {
+                        console.error('[menu] could not upload the header image:', error);
+                    }
                     const buttonParamsJson = JSON.stringify({
                         title: options.buttonText,
                         sections: [
@@ -254,24 +256,14 @@ export function registerMessageLogger(sock, identityService, dispatcher, ai = di
                             },
                         ],
                     });
-                    const singleSelect = proto.Message.InteractiveMessage.NativeFlowMessage.NativeFlowButton.create({
-                        name: 'single_select',
-                        buttonParamsJson,
+                    const nativeFlow = proto.Message.InteractiveMessage.NativeFlowMessage.create({
+                        buttons: [proto.Message.InteractiveMessage.NativeFlowMessage.NativeFlowButton.create({
+                            name: 'single_select',
+                            buttonParamsJson,
+                        })],
+                        messageParamsJson: '{}',
+                        messageVersion: 1,
                     });
-                    const interactiveMessage = proto.Message.InteractiveMessage.create({
-                        body: proto.Message.InteractiveMessage.Body.create({
-                            text: options.text,
-                        }),
-                        footer: proto.Message.InteractiveMessage.Footer.create({
-                            text: options.footer,
-                        }),
-                        nativeFlowMessage: proto.Message.InteractiveMessage.NativeFlowMessage.create({
-                            buttons: [singleSelect],
-                            messageParamsJson: '{}',
-                            messageVersion: 1,
-                        }),
-                    });
-                    const fullMsg = generateWAMessageFromContent(chatJid, { interactiveMessage }, { userJid: sock.user?.id ?? '' });
                     const bizNode = {
                         tag: 'biz',
                         attrs: {},
@@ -289,20 +281,63 @@ export function registerMessageLogger(sock, identityService, dispatcher, ai = di
                     const additionalNodes = isJidGroup(chatJid)
                         ? [bizNode]
                         : [bizNode, botNode];
-                    try {
+                    const relay = async (content) => {
+                        const fullMsg = generateWAMessageFromContent(chatJid, content, { userJid: sock.user?.id ?? '' });
                         await sock.relayMessage(chatJid, fullMsg.message, {
                             messageId: fullMsg.key.id,
                             additionalNodes,
                         });
-                    }
-                    catch (error) {
-                        // Never leave the user without an answer: fall back to plain text.
-                        console.error('[menu] native flow failed, falling back to text:', error);
-                        const lines = options.rows.map((row) => `• ${row.title} — ${row.rowId}`);
-                        await sock.sendMessage(chatJid, {
-                            text: [options.text, ...lines].join('\n'),
+                    };
+                    const body = proto.Message.InteractiveMessage.Body.create({ text: options.text });
+                    const footer = proto.Message.InteractiveMessage.Footer.create({ text: options.footer });
+                    const card = proto.Message.InteractiveMessage.create({
+                        body,
+                        footer,
+                        nativeFlowMessage: nativeFlow,
+                    });
+                    if (imageMessage) {
+                        card.header = proto.Message.InteractiveMessage.Header.create({
+                            title: options.title,
+                            hasMediaAttachment: true,
+                            imageMessage,
                         });
                     }
+                    else {
+                        card.header = proto.Message.InteractiveMessage.Header.create({ title: options.title });
+                    }
+                    try {
+                        await relay({
+                            interactiveMessage: {
+                                carouselMessage: {
+                                    cards: [card],
+                                    messageVersion: 1,
+                                    carouselCardType: proto.Message.InteractiveMessage.CarouselMessage.CarouselCardType.HSCROLL_CARDS,
+                                },
+                                body: { text: options.text },
+                                footer: { text: options.footer },
+                            },
+                        });
+                        return;
+                    }
+                    catch (error) {
+                        console.error('[menu] carousel failed, trying the plain native flow:', error);
+                    }
+                    try {
+                        await relay({
+                            interactiveMessage: proto.Message.InteractiveMessage.create({
+                                body,
+                                footer,
+                                nativeFlowMessage: nativeFlow,
+                            }),
+                        });
+                        return;
+                    }
+                    catch (error) {
+                        console.error('[menu] native flow failed, falling back to text:', error);
+                    }
+                    // Never leave the user without an answer: fall back to plain text.
+                    const lines = options.rows.map((row) => `• ${row.title} — ${row.rowId}`);
+                    await sock.sendMessage(chatJid, { text: [options.text, ...lines].join('\n') });
                 },
                 sendButtons: async (options) => {
                     const buttonParamsJson = options.buttons
