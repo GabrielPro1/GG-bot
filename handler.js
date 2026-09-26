@@ -247,6 +247,10 @@ export function registerMessageLogger(sock, identityService, dispatcher, ai = di
                             },
                         ],
                     });
+                    const singleSelect = proto.Message.InteractiveMessage.NativeFlowMessage.NativeFlowButton.create({
+                        name: 'single_select',
+                        buttonParamsJson,
+                    });
                     const interactiveMessage = proto.Message.InteractiveMessage.create({
                         header: proto.Message.InteractiveMessage.Header.create({
                             title: options.title,
@@ -260,7 +264,8 @@ export function registerMessageLogger(sock, identityService, dispatcher, ai = di
                             text: options.footer,
                         }),
                         nativeFlowMessage: proto.Message.InteractiveMessage.NativeFlowMessage.create({
-                            buttons: [{ name: 'single_select', buttonParamsJson }],
+                            buttons: [singleSelect],
+                            messageParamsJson: '{}',
                             messageVersion: 1,
                         }),
                     });
@@ -284,6 +289,7 @@ export function registerMessageLogger(sock, identityService, dispatcher, ai = di
                         : [bizNode, botNode];
                     await sock.relayMessage(chatJid, fullMsg.message, {
                         messageId: fullMsg.key.id,
+                        additionalNodes,
                     });
                 },
                 sendButtons: async (options) => {
