@@ -2,6 +2,7 @@ import { describe, it } from 'node:test';
 import assert from 'node:assert/strict';
 import { proto, generateWAMessageFromContent } from '@whiskeysockets/baileys';
 import { CommandRegistry } from '../lib/commands/registry.js';
+import { renderSectionList, toFancyFont } from '../lib/commands/menu-text.js';
 
 /** Mirrors the payload built by sendList() in handler.js. */
 function buildList({ text, title, footer, buttonText, rows }) {
@@ -178,10 +179,15 @@ describe('/sezione lists the commands of one category', () => {
         );
     });
 
-    it('shows the section title and its count in the body', async () => {
+    it('shows the section title and its count, as a text list', async () => {
         const { lists } = await callPlugin(SEZIONE, makeRegistry(), ['rpg']);
-        assert.equal(lists[0].text, '🎮 RPG\n2 comandi disponibili');
-    });
+        const list = lists[0];
+        assert.equal(list.plain, true, 'a section is a text list, not a prompt');
+        assert.equal(list.emoji, '🎮');
+        assert.equal(list.label, 'RPG');
+        const rendered = renderSectionList(list);
+        assert.match(rendered, /🎮 𝐌𝐄𝐍𝐔 𝐑𝐏𝐆/);
+        assert.match(rendered, new RegExp(toFancyFont('2 comandi disponibili')));    });
 
     it('rejects an unknown category instead of sending a list', async () => {
         const { lists, replies } = await callPlugin(SEZIONE, makeRegistry(), ['inesistente']);

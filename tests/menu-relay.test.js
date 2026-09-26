@@ -23,7 +23,7 @@ function createHarness() {
     const relayed = [];
     const texts = [];
     const images = [];
-    const harness = { relayFailTimes: 0, sendMessageShouldThrow: false, uploadShouldThrow: false };
+    const harness = { relayFailTimes: 0, imageSendShouldThrow: false, uploadShouldThrow: false };
 
     const sock = {
         user: { id: '393516059068:1@s.whatsapp.net' },
@@ -50,10 +50,10 @@ function createHarness() {
             return { key: { id: 'FAKE' } };
         },
         sendMessage: async (jid, content) => {
-            if (harness.sendMessageShouldThrow) {
-                throw new Error('simulated send failure');
-            }
             if (content.image) {
+                if (harness.imageSendShouldThrow) {
+                    throw new Error('simulated image send failure');
+                }
                 images.push(content);
             }
             else {
@@ -74,11 +74,11 @@ function createHarness() {
     const dispatcher = new CommandDispatcher(registry, {}, new OwnerService({ owners: [] }));
     registerMessageLogger(sock, new IdentityService(), dispatcher);
 
-    // The handler is fire and forget, and the two interactive shapes are sent with a gap,
-    // so poll for the expected number of relays instead of guessing a fixed delay.
-    const send = async (text, expectedRelays = 1) => {
-        const baseRelays = relayed.length;
-        const baseTexts = texts.length;
+    // The handler is fire and forget, so poll until the command produced its
+    // single message instead of guessing a fixed delay.
+    const total = () => relayed.length + texts.length + images.length;
+    const send = async (text) => {
+        const base = total();
         await listeners.get('messages.upsert')({
             messages: [
                 {
@@ -90,7 +90,7 @@ function createHarness() {
             type: 'notify',
         });
         const deadline = Date.now() + 10_000;
-        while (relayed.length - baseRelays < expectedRelays && texts.length === baseTexts) {
+        while (total() === base) {
             if (Date.now() > deadline) {
                 throw new Error('timed out waiting for the handler to answer');
             }
@@ -172,11 +172,36 @@ describe('Menu rides on one carousel with the biz node', () => {
         );
     });
 
-    it('lists the commands of a section on /sezione', async () => {
+    it('never relays a section, so there is no second prompt to tap', async () => {
         await harness.send('/sezione rpg');
-        const { card, rows } = readRows(harness.relayed[0]);
-        assert.equal(card.header.title, '🎮 RPG');
-        assert.deepEqual(rows.map((r) => r.id).sort(), ['/ruba', '/uso']);
+        assert.equal(harness.relayed.length, 0, 'a section is a text list, not an interactive message');
+        assert.equal(harness.texts.length, 0);
+        assert.equal(harness.images.length, 1);
+    });
+
+    it('puts the section image and the list in one message', async () => {
+        await harness.send('/sezione rpg');
+        const [section] = harness.images;
+        assert.equal(section.mimetype, 'image/png');
+        assert.match(section.caption, /🎮/);
+        assert.match(section.caption, /𝐑𝐏𝐆/, 'the section name goes in the decorative font');
+        assert.ok(!/Scegli/.test(section.caption), 'no selection button may be advertised');
+    });
+
+    it('lists the commands of a section in the decorative font', async () => {
+        await harness.send('/sezione rpg');
+        const { caption } = harness.images[0];
+        assert.ok(caption.includes('/𝐫𝐮𝐛𝐚'), `ruba missing from:\n${caption}`);
+        assert.ok(caption.includes('/𝐮𝐬𝐨'), `uso missing from:\n${caption}`);
+        assert.ok(caption.includes('⮕'), 'the bullets come from the menu style');
+    });
+
+    it('falls back to a plain text list when the image cannot be sent', async () => {
+        harness.imageSendShouldThrow = true;
+        await harness.send('/sezione rpg');
+        assert.equal(harness.images.length, 0);
+        assert.equal(harness.texts.length, 1);
+        assert.match(harness.texts[0].text, /𝐑𝐏𝐆/);
     });
 
     it('drops to the plain native flow only when the carousel cannot be relayed', async () => {

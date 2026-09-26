@@ -2,6 +2,7 @@ import { isJidGroup, isJidStatusBroadcast, proto, generateWAMessageFromContent, 
 import { disabledAiView } from './lib/ai/ai.service.js';
 import { handleAiModeMessage } from './lib/ai/ai-mode.js';
 import { loadMenuImage } from './lib/commands/menu-images.js';
+import { renderSectionList } from './lib/commands/menu-text.js';
 const TEXT_PREVIEW_MAX_LENGTH = 100;
 /** Upper bound for image bytes sent to Gemini (inline data limit is ~20MB). */
 const MAX_AI_IMAGE_BYTES = 20_000_000;
@@ -232,6 +233,21 @@ export function registerMessageLogger(sock, identityService, dispatcher, ai = di
                 identity,
                 reply: (replyText) => sock.sendMessage(chatJid, { text: replyText }).then(() => undefined),
                 sendList: async (options) => {
+                    // A section is a list the user reads, not a second prompt: the
+                    // image and the list travel in one caption, which every client
+                    // shows and no relay node can drop.
+                    if (options.plain) {
+                        const caption = renderSectionList(options);
+                        const imageBuffer = await loadMenuImage(options.imageKey);
+                        try {
+                            await sock.sendMessage(chatJid, { image: imageBuffer, caption, mimetype: 'image/png' });
+                        }
+                        catch (error) {
+                            console.error('[menu] section list with image failed, falling back to text:', error);
+                            await sock.sendMessage(chatJid, { text: caption });
+                        }
+                        return;
+                    }
                     // A carousel with its header image is the only shape every client renders.
                     // It needs the biz/bot nodes: without them WhatsApp drops it on Android
                     // while iOS keeps showing it, which is what made this look device specific.

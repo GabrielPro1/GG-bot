@@ -1,4 +1,4 @@
-import { buildMenuSections, describeSectionCount } from '../../lib/commands/menu-sections.js';
+import { buildMenuSections } from '../../lib/commands/menu-sections.js';
 const USAGE_HINT = 'Usa /menu per scegliere una categoria.';
 
 /**
@@ -27,12 +27,13 @@ export default {
             return;
         }
         await sendList({
-            text: [section.title, describeSectionCount(section.rows.length)].join('\n'),
+            plain: true,
             title: section.title,
-            footer: 'Usa /menu per tornare indietro',
-            buttonText: '📋 Scegli Comando',
+            footer: 'Usa /menu per scegliere un’altra categoria',
             imageKey: section.key,
             rows: section.rows,
+            emoji: section.emoji,
+            label: section.label,
         });
     },
 };
