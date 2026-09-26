@@ -12,6 +12,40 @@ import { createTestDb } from './helpers.js';
 function makeMention(jid, identity) {
     return { jid, identity };
 }
+/** The top level menu lists sections, so a category is reached by its label. */
+async function findMenuRow(registry, label) {
+    const menu = (await import('../plugins/core/menu.js')).default;
+    let rows = [];
+    await menu.execute({
+        args: [],
+        reply: async () => undefined,
+        sendList: async (options) => {
+            rows = options.rows;
+        },
+        registry,
+        rpg: {},
+        mentions: [],
+        quoted: null,
+    });
+    return rows.find((r) => r.title.includes(label));
+}
+/** Opens a section through /sezione and returns the command rows it lists. */
+async function listSection(registry, key) {
+    const sezione = (await import('../plugins/core/sezione.js')).default;
+    let rows = [];
+    await sezione.execute({
+        args: [key],
+        reply: async () => undefined,
+        sendList: async (options) => {
+            rows = options.rows;
+        },
+        registry,
+        rpg: {},
+        mentions: [],
+        quoted: null,
+    });
+    return rows;
+}
 describe('Owner system', () => {
     let db;
     let identityService;
@@ -188,28 +222,19 @@ describe('Owner system', () => {
             assert.equal(rpg.getWalletBalance(target.userId), before, 'non-owner must not add coins');
             assert.equal(replies.join('\n').includes('riservato'), true);
         });
-        it('registers with category owner, ownerOnly and appears in the OWNER menu card', async () => {
+        it('registers with category owner, ownerOnly and appears under the OWNER section', async () => {
             const { registry } = build();
             const command = registry.get('aggiungimonete');
             assert.ok(command);
             assert.equal(command.category, 'owner');
             assert.equal(command.ownerOnly, true);
-            let ownerSection;
-            const menu = (await import('../plugins/core/menu.js')).default;
-            await menu.execute({
-                args: [],
-                identity: ownerIdentity,
-                reply: async () => undefined,
-                sendList: async (options) => {
-                    ownerSection = options.sections.find((s) => s.title.includes('OWNER'));
-                },
-                registry: registry,
-                rpg: new RpgService(new PlayerRepository(db)),
-                mentions: [],
-                quoted: null,
-            });
-            assert.ok(ownerSection, 'menu must contain an OWNER card');
-            assert.equal(ownerSection.rows.some((r) => r.rowId === '/aggiungimonete'), true);
+
+            const ownerRow = await findMenuRow(registry, 'OWNER');
+            assert.ok(ownerRow, 'menu must list the OWNER section');
+            assert.equal(ownerRow.rowId, '/sezione owner');
+
+            const ownerRows = await listSection(registry, 'owner');
+            assert.equal(ownerRows.some((r) => r.rowId === '/aggiungimonete'), true);
         });
     });
     describe('/rimuovimonete', () => {
@@ -370,28 +395,19 @@ describe('Owner system', () => {
             assert.equal(rpg.getWalletBalance(target.userId), 0);
             assert.equal(rpg.getWalletBalance(target.userId) >= 0, true);
         });
-        it('appears in the OWNER menu category via the registry', async () => {
+        it('appears under the OWNER section via the registry', async () => {
             const { registry } = build();
             const command = registry.get('rimuovimonete');
             assert.ok(command);
             assert.equal(command.category, 'owner');
             assert.equal(command.ownerOnly, true);
-            let ownerSection;
-            const menu = (await import('../plugins/core/menu.js')).default;
-            await menu.execute({
-                args: [],
-                identity: ownerIdentity,
-                reply: async () => undefined,
-                sendList: async (options) => {
-                    ownerSection = options.sections.find((s) => s.title.includes('OWNER'));
-                },
-                registry: registry,
-                rpg: new RpgService(new PlayerRepository(db)),
-                mentions: [],
-                quoted: null,
-            });
-            assert.ok(ownerSection, 'menu must contain an OWNER card');
-            assert.equal(ownerSection.rows.some((r) => r.rowId === '/rimuovimonete'), true);
+
+            const ownerRow = await findMenuRow(registry, 'OWNER');
+            assert.ok(ownerRow, 'menu must list the OWNER section');
+            assert.equal(ownerRow.rowId, '/sezione owner');
+
+            const ownerRows = await listSection(registry, 'owner');
+            assert.equal(ownerRows.some((r) => r.rowId === '/rimuovimonete'), true);
         });
     });
 });

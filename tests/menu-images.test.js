@@ -5,6 +5,7 @@ import { join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { CommandRegistry } from '../lib/commands/registry.js';
 import { loadMenuImage, resolveMenuImageName } from '../lib/commands/menu-images.js';
+import { buildMenuSections } from '../lib/commands/menu-sections.js';
 
 const IMAGE_DIR = fileURLToPath(new URL('../media/menu/', import.meta.url));
 
@@ -18,44 +19,24 @@ function fingerprint(buffer) {
     return hash;
 }
 
-async function runMenu() {
+function makeRegistry() {
     const registry = new CommandRegistry();
-    registry.register({
-        name: 'ping',
-        category: 'core',
-        emoji: '🏓',
-        description: 'Risponde pong',
+    const make = (name, category, emoji) => ({
+        name,
+        category,
+        emoji,
+        description: `${name} desc`,
         execute: async () => {},
     });
-    registry.register({
-        name: 'ruba',
-        category: 'rpg',
-        emoji: '💰',
-        description: 'Ruba monete',
-        execute: async () => {},
-    });
-    registry.register({
-        name: 'aggiungimonete',
-        category: 'owner',
-        emoji: '➕',
-        description: 'Aggiunge monete',
-        execute: async () => {},
-    });
-    let captured = null;
-    const menu = (await import('../plugins/core/menu.js')).default;
-    await menu.execute({
-        registry,
-        sendList: async (options) => {
-            captured = options;
-        },
-    });
-    return captured;
+    registry.register(make('ping', 'core', '🏓'));
+    registry.register(make('ruba', 'rpg', '💰'));
+    registry.register(make('aggiungimonete', 'owner', '➕'));
+    return registry;
 }
 
 describe('Menu header images', () => {
-    it('gives every menu section a distinct image', async () => {
-        const menu = await runMenu();
-        const sections = menu.sections;
+    it('gives every menu section its own image', async () => {
+        const sections = buildMenuSections(makeRegistry());
         assert.ok(sections.length >= 3, 'menu must expose several sections');
 
         const names = sections.map((section) => resolveMenuImageName(section.key));
@@ -67,11 +48,45 @@ describe('Menu header images', () => {
         );
     });
 
-    it('exposes a category key on every section', async () => {
-        const menu = await runMenu();
-        for (const section of menu.sections) {
+    it('exposes a category key on every section', () => {
+        const sections = buildMenuSections(makeRegistry());
+        for (const section of sections) {
             assert.equal(typeof section.key, 'string', `section ${section.title} needs a key`);
         }
+    });
+
+    it('uses the generic image for the top level menu', async () => {
+        const menu = (await import('../plugins/core/menu.js')).default;
+        let captured = null;
+        await menu.execute({
+            args: [],
+            registry: makeRegistry(),
+            rpg: {},
+            sendList: async (options) => {
+                captured = options;
+            },
+        });
+        assert.equal(captured.imageKey, undefined, 'the top level menu has no section image');
+        assert.equal(
+            (await loadMenuImage(captured.imageKey)).byteLength,
+            (await loadMenuImage('other')).byteLength,
+            'an undefined key must resolve to the fallback image',
+        );
+    });
+
+    it('uses the section image when a section is opened', async () => {
+        const sezione = (await import('../plugins/core/sezione.js')).default;
+        let captured = null;
+        await sezione.execute({
+            args: ['rpg'],
+            registry: makeRegistry(),
+            rpg: {},
+            reply: async () => undefined,
+            sendList: async (options) => {
+                captured = options;
+            },
+        });
+        assert.equal(captured.imageKey, 'rpg');
     });
 
     it('ships one image file per menu category', async () => {

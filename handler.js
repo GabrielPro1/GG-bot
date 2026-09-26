@@ -232,57 +232,56 @@ export function registerMessageLogger(sock, identityService, dispatcher, ai = di
                 identity,
                 reply: (replyText) => sock.sendMessage(chatJid, { text: replyText }).then(() => undefined),
                 sendList: async (options) => {
-                    const cards = [];
-                    for (const section of options.sections) {
-                        const imageBuffer = await loadMenuImage(section.key);
-                        const { imageMessage } = await prepareWAMessageMedia({ image: imageBuffer }, { upload: sock.waUploadToServer, mediaUploadTimeoutMs: 30_000 });
-                        const buttonParamsJson = JSON.stringify({
-                            title: options.buttonText,
-                            sections: [
-                                {
-                                    title: section.title,
-                                    rows: section.rows.map((row) => ({
-                                        title: row.title,
-                                        description: row.description,
-                                        id: row.rowId,
-                                    })),
-                                },
-                            ],
-                        });
-                        cards.push({
-                            header: {
-                                title: section.title,
-                                hasMediaAttachment: true,
-                                imageMessage,
+                    const imageBuffer = await loadMenuImage(options.imageKey);
+                    const { imageMessage } = await prepareWAMessageMedia({ image: imageBuffer }, { upload: sock.waUploadToServer, mediaUploadTimeoutMs: 30_000 });
+                    const buttonParamsJson = JSON.stringify({
+                        title: options.buttonText,
+                        sections: [
+                            {
+                                title: options.title,
+                                rows: options.rows.map((row) => ({
+                                    title: row.title,
+                                    description: row.description,
+                                    id: row.rowId,
+                                })),
                             },
-                            body: {
-                                text: [
-                                    section.title,
-                                    `${section.rows.length} ${section.rows.length === 1 ? 'comando' : 'comandi'} ${section.rows.length === 1 ? 'disponibile' : 'disponibili'}`,
-                                ].join('\n'),
-                            },
-                            footer: { text: options.footer },
-                            nativeFlowMessage: {
-                                buttons: [{ name: 'single_select', buttonParamsJson }],
-                                messageVersion: 1,
-                            },
-                        });
-                    }
-                    const interactiveMsg = proto.Message.create({
-                        interactiveMessage: {
-                            carouselMessage: {
-                                cards,
-                                messageVersion: 1,
-                                carouselCardType: proto.Message.InteractiveMessage.CarouselMessage.CarouselCardType
-                                    .HSCROLL_CARDS,
-                            },
-                            body: { text: options.text },
-                            footer: { text: options.footer },
-                        },
+                        ],
                     });
-                    const fullMsg = generateWAMessageFromContent(chatJid, interactiveMsg, {
-                        userJid: sock.user?.id ?? '',
+                    const interactiveMessage = proto.Message.InteractiveMessage.create({
+                        header: proto.Message.InteractiveMessage.Header.create({
+                            title: options.title,
+                            hasMediaAttachment: true,
+                            imageMessage,
+                        }),
+                        body: proto.Message.InteractiveMessage.Body.create({
+                            text: options.text,
+                        }),
+                        footer: proto.Message.InteractiveMessage.Footer.create({
+                            text: options.footer,
+                        }),
+                        nativeFlowMessage: proto.Message.InteractiveMessage.NativeFlowMessage.create({
+                            buttons: [{ name: 'single_select', buttonParamsJson }],
+                            messageVersion: 1,
+                        }),
                     });
+                    const fullMsg = generateWAMessageFromContent(chatJid, { interactiveMessage }, { userJid: sock.user?.id ?? '' });
+                    const bizNode = {
+                        tag: 'biz',
+                        attrs: {},
+                        content: [
+                            {
+                                tag: 'interactive',
+                                attrs: { type: 'native_flow', v: '1' },
+                                content: [
+                                    { tag: 'native_flow', attrs: { v: '9', name: 'mixed' } },
+                                ],
+                            },
+                        ],
+                    };
+                    const botNode = { tag: 'bot', attrs: { biz_bot: '1' } };
+                    const additionalNodes = isJidGroup(chatJid)
+                        ? [bizNode]
+                        : [bizNode, botNode];
                     await sock.relayMessage(chatJid, fullMsg.message, {
                         messageId: fullMsg.key.id,
                     });
