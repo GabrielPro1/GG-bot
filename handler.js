@@ -1,4 +1,4 @@
-import { isJidGroup, isJidStatusBroadcast, proto, generateWAMessageFromContent, prepareWAMessageMedia, downloadMediaMessage, normalizeMessageContent, } from '@whiskeysockets/baileys';
+import { isJidGroup, isJidStatusBroadcast, proto, generateWAMessageFromContent, downloadMediaMessage, normalizeMessageContent, } from '@whiskeysockets/baileys';
 import { disabledAiView } from './lib/ai/ai.service.js';
 import { handleAiModeMessage } from './lib/ai/ai-mode.js';
 import { loadMenuImage } from './lib/commands/menu-images.js';
@@ -232,8 +232,15 @@ export function registerMessageLogger(sock, identityService, dispatcher, ai = di
                 identity,
                 reply: (replyText) => sock.sendMessage(chatJid, { text: replyText }).then(() => undefined),
                 sendList: async (options) => {
+                    // The image travels as its own message. WhatsApp silently drops a
+                    // native flow that carries a top level media header, and the carousel
+                    // only ever worked because its headers lived inside the cards.
                     const imageBuffer = await loadMenuImage(options.imageKey);
-                    const { imageMessage } = await prepareWAMessageMedia({ image: imageBuffer }, { upload: sock.waUploadToServer, mediaUploadTimeoutMs: 30_000 });
+                    await sock.sendMessage(chatJid, {
+                        image: imageBuffer,
+                        caption: options.text,
+                        mimetype: 'image/png',
+                    });
                     const buttonParamsJson = JSON.stringify({
                         title: options.buttonText,
                         sections: [
@@ -252,11 +259,6 @@ export function registerMessageLogger(sock, identityService, dispatcher, ai = di
                         buttonParamsJson,
                     });
                     const interactiveMessage = proto.Message.InteractiveMessage.create({
-                        header: proto.Message.InteractiveMessage.Header.create({
-                            title: options.title,
-                            hasMediaAttachment: true,
-                            imageMessage,
-                        }),
                         body: proto.Message.InteractiveMessage.Body.create({
                             text: options.text,
                         }),
@@ -287,10 +289,20 @@ export function registerMessageLogger(sock, identityService, dispatcher, ai = di
                     const additionalNodes = isJidGroup(chatJid)
                         ? [bizNode]
                         : [bizNode, botNode];
-                    await sock.relayMessage(chatJid, fullMsg.message, {
-                        messageId: fullMsg.key.id,
-                        additionalNodes,
-                    });
+                    try {
+                        await sock.relayMessage(chatJid, fullMsg.message, {
+                            messageId: fullMsg.key.id,
+                            additionalNodes,
+                        });
+                    }
+                    catch (error) {
+                        // Never leave the user without an answer: fall back to plain text.
+                        console.error('[menu] native flow failed, falling back to text:', error);
+                        const lines = options.rows.map((row) => `• ${row.title} — ${row.rowId}`);
+                        await sock.sendMessage(chatJid, {
+                            text: [options.text, ...lines].join('\n'),
+                        });
+                    }
                 },
                 sendButtons: async (options) => {
                     const buttonParamsJson = options.buttons
