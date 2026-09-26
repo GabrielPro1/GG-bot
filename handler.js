@@ -1,10 +1,8 @@
 import { isJidGroup, isJidStatusBroadcast, proto, generateWAMessageFromContent, prepareWAMessageMedia, downloadMediaMessage, normalizeMessageContent, } from '@whiskeysockets/baileys';
-import { readFile } from 'node:fs/promises';
-import { fileURLToPath } from 'node:url';
 import { disabledAiView } from './lib/ai/ai.service.js';
 import { handleAiModeMessage } from './lib/ai/ai-mode.js';
+import { loadMenuImage } from './lib/commands/menu-images.js';
 const TEXT_PREVIEW_MAX_LENGTH = 100;
-const MENU_IMAGE_PATH = fileURLToPath(new URL('./media/menuimage.png', import.meta.url));
 /** Upper bound for image bytes sent to Gemini (inline data limit is ~20MB). */
 const MAX_AI_IMAGE_BYTES = 20_000_000;
 const AI_IMAGE_ERROR = '⚠️ Non è stato possibile scaricare l\'immagine. Riprova.';
@@ -234,9 +232,10 @@ export function registerMessageLogger(sock, identityService, dispatcher, ai = di
                 identity,
                 reply: (replyText) => sock.sendMessage(chatJid, { text: replyText }).then(() => undefined),
                 sendList: async (options) => {
-                    const imageBuffer = await readFile(MENU_IMAGE_PATH);
-                    const { imageMessage } = await prepareWAMessageMedia({ image: imageBuffer }, { upload: sock.waUploadToServer, mediaUploadTimeoutMs: 30_000 });
-                    const cards = options.sections.map((section) => {
+                    const cards = [];
+                    for (const section of options.sections) {
+                        const imageBuffer = await loadMenuImage(section.key);
+                        const { imageMessage } = await prepareWAMessageMedia({ image: imageBuffer }, { upload: sock.waUploadToServer, mediaUploadTimeoutMs: 30_000 });
                         const buttonParamsJson = JSON.stringify({
                             title: options.buttonText,
                             sections: [
@@ -250,7 +249,7 @@ export function registerMessageLogger(sock, identityService, dispatcher, ai = di
                                 },
                             ],
                         });
-                        return {
+                        cards.push({
                             header: {
                                 title: section.title,
                                 hasMediaAttachment: true,
@@ -267,8 +266,8 @@ export function registerMessageLogger(sock, identityService, dispatcher, ai = di
                                 buttons: [{ name: 'single_select', buttonParamsJson }],
                                 messageVersion: 1,
                             },
-                        };
-                    });
+                        });
+                    }
                     const interactiveMsg = proto.Message.create({
                         interactiveMessage: {
                             carouselMessage: {

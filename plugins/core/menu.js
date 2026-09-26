@@ -47,7 +47,7 @@ export default {
                 rowId: `/${cmd.name}`,
                 description: cmd.description,
             }));
-            sections.push({ title: `${emoji} ${label}`, rows });
+            sections.push({ key, title: `${emoji} ${label}`, rows });
         }
         await sendList({
             text: 'Seleziona una categoria per vedere i comandi disponibili.',
