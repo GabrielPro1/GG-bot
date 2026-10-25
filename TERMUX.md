@@ -42,19 +42,59 @@ Dentro il proot:
 ```bash
 apt update && apt install -y nodejs npm curl tar
 cd /sdcard/Documents/GG-Bot
-mkdir -p /root/GG-Bot-node_modules
-cp package.json package-lock.json /root/GG-Bot-node_modules/
-npm install --prefix /root/GG-Bot-node_modules
+
+# npm --prefix X installa in X/node_modules: uso una cartella di build
+# separata, poi sposto il risultato dove lo cercano gli script.
+mkdir -p /root/GG-Bot-deps
+cp package.json package-lock.json /root/GG-Bot-deps/
+npm install --prefix /root/GG-Bot-deps --no-audit --no-fund
+
+# conserva l'eventuale installazione precedente invece di cancellarla
+mv /root/GG-Bot-node_modules "/root/GG-Bot-node_modules.bak.$(date +%s)" 2>/dev/null || true
+mv /root/GG-Bot-deps/node_modules /root/GG-Bot-node_modules
 ```
 
 Il progetto resta su `/sdcard`, ma le dipendenze no. La copia di
 `package*.json` serve perché `npm --prefix` legge il manifest dalla directory
-di destinazione. Non copiare `node_modules` da Windows: i binding nativi sono
-per un'altra piattaforma.
+indicata, non dalla working directory. Non copiare `node_modules` da Windows:
+i binding nativi sono per un'altra piattaforma.
 
-Se `npm install` dentro il proot fallisce con `ENOENT ... _cacache/tmp`,
-evita reinstallazioni cieche e ripara solo il binding mancante con
-`fix-native.sh` (vedi sotto).
+`start.sh` e `fix-native.sh` cercano i moduli in `/root/GG-Bot-node_modules`,
+quindi lo spostamento finale serve: senza, il bind mount mostrerebbe una
+cartella `node_modules` annidata.
+
+Se hai già una `/root/GG-Bot-node_modules` funzionante (contiene
+`better-sqlite3/package.json` e `@napi-rs/`), puoi saltare l'installazione e
+passare direttamente all'avvio.
+
+### Errore `ENOENT ... _cacache/tmp` durante `npm install`
+
+Non è un problema del progetto: la cache di npm è corrotta o una scrittura è
+stata interrotta, spesso per spazio esaurito. Controlla prima lo spazio:
+
+```bash
+df -h /root
+df -i /root
+```
+
+Poi riprova con una cache nuova (senza toccare quella vecchia) e meno
+connessioni in parallelo:
+
+```bash
+rm -rf /root/GG-Bot-deps/node_modules
+npm install --prefix /root/GG-Bot-deps --no-audit --no-fund \
+    --cache /root/.npm-cache-gg --maxsockets 2
+```
+
+Se funziona, ripeti lo spostamento descritto sopra. Se fallisce ancora, prova
+`npm ci` con la stessa cache:
+
+```bash
+npm ci --prefix /root/GG-Bot-deps --cache /root/.npm-cache-gg
+```
+
+Se `df` mostra poco spazio libero, liberalo prima di ritentare: npm può
+fallire con `ENOENT` invece del più chiaro `ENOSPC`.
 
 ## Avvio manuale
 
