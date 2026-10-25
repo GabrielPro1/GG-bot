@@ -66,7 +66,7 @@ describe('target precedence (mention → quote → none)', () => {
         });
         return replies.join('\n');
     }
-    // Actor identity to use per command (owner-only commands need the owner).
+    // Identità dell'attore da usare per comando (i comandi owner-only richiedono l'owner).
     function identityFor(c) {
         return c.ownerOnly ? owner : caller;
     }
@@ -124,11 +124,11 @@ describe('target precedence (mention → quote → none)', () => {
                     const { map, rpg: rpgView } = buildDispatchers();
                     seedPlayers(rpgView, [actor.userId]);
                     const out = await run(map[c.key], c.text, actor);
-                    // No target resolved -> the command falls back to its previous "no target" reply.
+                    // Nessun target risolto -> il comando ricade sulla sua precedente risposta "nessun target".
                     assert.equal(out.length > 0, true);
                     assert.equal(out.includes(`@${TARGET_PN}`), false);
                     assert.equal(out.includes(`@${OTHER_PN}`), false);
-                    // It must be a usage/help response, not an executed action for a player.
+                    // Deve essere una risposta di uso/aiuto, non un'azione eseguita su un player.
                     assert.equal(out.includes(actorIdentityId(c)), false, 'reply must not reference the actor as a target change');
                 });
             });

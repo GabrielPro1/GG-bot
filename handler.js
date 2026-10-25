@@ -4,7 +4,7 @@ import { handleAiModeMessage } from './lib/ai/ai-mode.js';
 import { loadMenuImage } from './lib/commands/menu-images.js';
 import { renderSectionList } from './lib/commands/menu-text.js';
 const TEXT_PREVIEW_MAX_LENGTH = 100;
-/** Upper bound for image bytes sent to Gemini (inline data limit is ~20MB). */
+/** Limite superiore per i byte delle immagini inviate a Gemini (il limite dati inline è ~20MB). */
 const MAX_AI_IMAGE_BYTES = 20_000_000;
 const AI_IMAGE_ERROR = '⚠️ Non è stato possibile scaricare l\'immagine. Riprova.';
 function extractMentionedJids(message) {
@@ -123,9 +123,9 @@ function isImageMessage(message) {
     return message?.imageMessage != null;
 }
 /**
- * Downloads the image bytes of a received message in memory (never persisted to
- * disk). Returns null when the message has no image, is too large, or fails to
- * download. Does NOT log binary content or credentials.
+ * Scarica in memoria i byte dell'immagine di un messaggio ricevuto (mai salvata su
+ * disco). Ritorna null se il messaggio non ha immagini, è troppo grande o il
+ * download fallisce. Non logga contenuto binario né credenziali.
  */
 async function tryDownloadImage(message) {
     const imageMessage = message.message?.imageMessage;
@@ -232,10 +232,13 @@ export function registerMessageLogger(sock, identityService, dispatcher, ai = di
                 .handle(text, {
                 identity,
                 reply: (replyText) => sock.sendMessage(chatJid, { text: replyText }).then(() => undefined),
+                sendImage: (imageBuffer, caption, mimetype = 'image/jpeg') => sock
+                    .sendMessage(chatJid, { image: imageBuffer, caption, mimetype })
+                    .then(() => undefined),
                 sendList: async (options) => {
-                    // A section is a list the user reads, not a second prompt: the
-                    // image and the list travel in one caption, which every client
-                    // shows and no relay node can drop.
+                    // Una sezione è una lista che l'utente legge, non un secondo prompt: la
+                    // immagine e la lista viaggiano in una sola caption, che ogni client
+                    // mostra e che nessun nodo di relay può perdere.
                     if (options.plain) {
                         const caption = renderSectionList(options);
                         const imageBuffer = await loadMenuImage(options.imageKey);
@@ -248,9 +251,10 @@ export function registerMessageLogger(sock, identityService, dispatcher, ai = di
                         }
                         return;
                     }
-                    // A carousel with its header image is the only shape every client renders.
-                    // It needs the biz/bot nodes: without them WhatsApp drops it on Android
-                    // while iOS keeps showing it, which is what made this look device specific.
+                    // Un carousel con l'immagine di testata è l'unica forma che ogni client
+                    // rende. Richiede i nodi biz/bot: senza WhatsApp la scarta su Android
+                    // mentre iOS continua a mostrarla, ed è per questo che sembrava un
+                    // problema specifico del dispositivo.
                     const imageBuffer = await loadMenuImage(options.imageKey);
                     let imageMessage;
                     try {
@@ -351,7 +355,7 @@ export function registerMessageLogger(sock, identityService, dispatcher, ai = di
                     catch (error) {
                         console.error('[menu] native flow failed, falling back to text:', error);
                     }
-                    // Never leave the user without an answer: fall back to plain text.
+                    // Non lasciare mai l'utente senza risposta: fallback al testo semplice.
                     const lines = options.rows.map((row) => `• ${row.title} — ${row.rowId}`);
                     await sock.sendMessage(chatJid, { text: [options.text, ...lines].join('\n') });
                 },

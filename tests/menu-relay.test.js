@@ -15,8 +15,8 @@ function makeCommand(name, category, emoji) {
 }
 
 /**
- * Drives the real message handler with a fake socket, so we can inspect the
- * exact payload handed to relayMessage for /menu and /sezione.
+ * Guida il vero handler dei messaggi con un socket fittizio, così possiamo ispezionare
+ * l'esatta payload consegnata a relayMessage per /menu e /sezione.
  */
 function createHarness() {
     const listeners = new Map();
@@ -74,8 +74,8 @@ function createHarness() {
     const dispatcher = new CommandDispatcher(registry, {}, new OwnerService({ owners: [] }));
     registerMessageLogger(sock, new IdentityService(), dispatcher);
 
-    // The handler is fire and forget, so poll until the command produced its
-    // single message instead of guessing a fixed delay.
+    // L'handler è fire and forget, quindi attendiamo che il comando produca il suo
+    // singolo messaggio invece di indovinare un ritardo fisso.
     const total = () => relayed.length + texts.length + images.length;
     const send = async (text) => {
         const base = total();
@@ -96,14 +96,14 @@ function createHarness() {
             }
             await new Promise((resolve) => setTimeout(resolve, 25));
         }
-        // give any trailing output a chance to land
+        // lascia che ogni output residuo abbia il tempo di arrivare
         await new Promise((resolve) => setTimeout(resolve, 50));
     };
 
     return Object.assign(harness, { send, relayed, texts, images });
 }
 
-/** Reads the single_select rows out of either interactive shape. */
+/** Legge le righe single_select da una delle due forme interactive. */
 function readRows(entry) {
     const im = entry.message.interactiveMessage;
     const card = im.carouselMessage ? im.carouselMessage.cards[0] : im;

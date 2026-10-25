@@ -87,7 +87,7 @@ test('duplicate aliases within the same config are normalised, not double-regist
     assert.equal(result.ok, true);
     assert.equal(registry.get('shop')?.name, 'negozio');
     assert.equal(registry.get('store')?.name, 'negozio');
-    // "shop" is claimed exactly once: another command cannot reuse it.
+    // "shop" è rivendicato una sola volta: nessun altro comando può riusarlo.
     const conflict = registry.register({ name: 'acquista', aliases: ['shop'], execute: async () => undefined });
     assert.equal(conflict.ok, false);
     assert.match(conflict.error ?? '', /in use/);
@@ -95,7 +95,7 @@ test('duplicate aliases within the same config are normalised, not double-regist
 test('conflicting aliases across two commands are rejected with a clear error', () => {
     const registry = new CommandRegistry({ negozio: ['shop'] });
     registry.register(negozioCommand);
-    // another command declares the same alias inline -> its registration is rejected.
+    // un altro comando dichiara la stessa alias in linea -> la sua registrazione viene rifiutata.
     const result = registry.register({ name: 'combatti', aliases: ['shop'], execute: async () => undefined });
     assert.equal(result.ok, false);
     assert.match(result.error ?? '', /in use/);

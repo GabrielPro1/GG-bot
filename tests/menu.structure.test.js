@@ -4,7 +4,7 @@ import { proto, generateWAMessageFromContent } from '@whiskeysockets/baileys';
 import { CommandRegistry } from '../lib/commands/registry.js';
 import { renderSectionList, toFancyFont } from '../lib/commands/menu-text.js';
 
-/** Mirrors the payload built by sendList() in handler.js. */
+/** Rispecchia la payload costruita da sendList() in handler.js. */
 function buildList({ text, title, footer, buttonText, rows }) {
     return proto.Message.create({
         interactiveMessage: {

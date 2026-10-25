@@ -309,7 +309,7 @@ describe('AI mode images', () => {
         const last = provider.calls[provider.calls.length - 1];
         const msg = last[last.length - 1];
         assert.ok(msg.image);
-        // raw bytes are passed through (not a bot-generated description)
+        // i byte originali passano così come sono (non una descrizione generata dal bot)
         assert.equal(msg.image.mimeType, 'image/jpeg');
         assert.deepEqual(Array.from(msg.image.data), Array.from(IMAGE_JPEG));
     });
@@ -320,8 +320,8 @@ describe('AI mode images', () => {
         assert.equal(last[last.length - 1].image.mimeType, 'image/webp');
     });
     it('handles a download error gracefully (provider not called)', async () => {
-        // Simulate an unavailable download: no image is passed, so the router
-        // falls back to normal behavior rather than fabricating content.
+        // Simula un download non disponibile: non arriva alcuna immagine, quindi il router
+        // torna al comportamento normale invece di inventare contenuti.
         service.createChat('u1');
         const routed = await handleAiModeMessage({
             ai: service,

@@ -9,7 +9,7 @@ import { buildMenuSections } from '../lib/commands/menu-sections.js';
 
 const IMAGE_DIR = fileURLToPath(new URL('../media/menu/', import.meta.url));
 
-/** FNV-1a, so we can tell two image files apart without decoding them. */
+/** FNV-1a, così possiamo distinguere due file immagine senza decodificarli. */
 function fingerprint(buffer) {
     let hash = 0x811c9dc5;
     for (const byte of buffer) {

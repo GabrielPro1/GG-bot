@@ -99,7 +99,7 @@ test('reconnect does not recreate a session after deleteSession', async () => {
         const session = await manager.createSession('alice');
         await manager.deleteSession('alice');
         assert.equal(manager.hasSession('alice'), false);
-        // A late connection.update.close must NOT schedule a reconnect
+        // Un connection.update.close tardivo NON deve pianificare una riconnessione
         session.sock.ev.emit('connection.update', {
             connection: 'close',
             lastDisconnect: { error: new Error('x'), date: new Date() },
@@ -115,7 +115,7 @@ test('already-disconnected session with leftover files is still deleted', async 
     const authRoot = await tempAuthDir();
     try {
         const folder = await seedAuthFiles(authRoot, 'carol');
-        // no active socket for carol at all
+        // per carol non c'è alcun socket attivo
         const manager = new SessionManager({ authRoot, socketFactory: makeStubFactory() });
         const result = await manager.deleteSession('carol');
         assert.equal(result, true);

@@ -1,14 +1,15 @@
 import { getAllItems } from '../../lib/rpg/items/catalog.js';
 import { getRarityInfo } from '../../lib/rpg/items/rarity.js';
 const SIGNATURE = '╰━━━━━━━━ ✨ GG BOT ✨ ━━━━━━━━╯';
-/** Items that can be bought. A missing/zero price means "not purchasable". */
+/** Oggetti acquistabili. Prezzo mancante o zero significa "non acquistabile". */
 function isPurchasable(item) {
     return item.price > 0;
 }
 /**
- * Builds a quick-reply button for a purchasable item. Its id triggers the real
- * `/acquista <itemId>` command through the existing dispatcher flow, so no
- * purchase logic is duplicated here and no user identifier is embedded.
+ * Costruisce un bottone quick-reply per un oggetto acquistabile. Il suo id attiva
+ * il vero comando `/acquista <itemId>` attraverso il dispatcher esistente, così
+ * qui non si duplica la logica di acquisto e non viene incapsulato alcun
+ * identificativo utente.
  */
 function itemToBuyButton(item) {
     return {

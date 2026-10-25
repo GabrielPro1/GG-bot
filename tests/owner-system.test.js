@@ -12,7 +12,7 @@ import { createTestDb } from './helpers.js';
 function makeMention(jid, identity) {
     return { jid, identity };
 }
-/** The top level menu lists sections, so a category is reached by its label. */
+/** Il menu di primo livello elenca le sezioni, quindi una categoria si raggiunge tramite la sua etichetta. */
 async function findMenuRow(registry, label) {
     const menu = (await import('../plugins/core/menu.js')).default;
     let rows = [];
@@ -29,7 +29,7 @@ async function findMenuRow(registry, label) {
     });
     return rows.find((r) => r.title.includes(label));
 }
-/** Opens a section through /sezione and returns the command rows it lists. */
+/** Apre una sezione tramite /sezione e restituisce le righe dei comandi che elenca. */
 async function listSection(registry, key) {
     const sezione = (await import('../plugins/core/sezione.js')).default;
     let rows = [];

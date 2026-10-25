@@ -112,10 +112,10 @@ export function cleanupTempDir(dbPath) {
         rmSync(dir, { recursive: true, force: true });
     }
     catch {
-        // ignore cleanup errors
+        // ignora gli errori di pulizia
     }
 }
-/** Insert an identity row directly so FK constraints are satisfied for player tests. */
+/** Inserisce una riga identity direttamente così i vincoli FK sono soddisfatti nei test dei player. */
 export function insertTestIdentity(db, userId) {
     db.prepare(`INSERT INTO identities (user_id, lid_jid, pn_jid, username) VALUES (?, null, null, null)`).run(userId);
 }

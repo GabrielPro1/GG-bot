@@ -80,7 +80,7 @@ test('start refuses when a session already exists for the user (no duplicate soc
     const { chat } = makeChat();
     await linker.start('555', chat);
     emit(manager, '555', { connection: 'open' });
-    // session now exists and is open
+    // ora la sessione esiste ed è aperta
     await linker.start('555', chat);
     assert.ok(chat.texts.some((t) => t.includes('già collegato')));
     assert.equal(manager.size, 1);

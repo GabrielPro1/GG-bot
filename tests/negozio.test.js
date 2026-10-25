@@ -142,7 +142,7 @@ describe('/negozio interactive buttons', () => {
             rpgView.getOrCreatePlayer(buyer.userId);
             const walletBefore = rpgView.getWalletBalance(buyer.userId);
             const inventoryBefore = rpgView.getInventory(buyer.userId);
-            // the button the user pressed -> executes /acquista pozione as the clicker
+            // il bottone premuto dall'utente -> esegue /acquista pozione come cliccante
             const out = await run(dispatcher, '/acquista pozione', buyer);
             assert.equal(out.includes('Acquisto completato'), true);
             assert.equal(rpgView.getWalletBalance(buyer.userId), 100 - 50);
@@ -152,7 +152,7 @@ describe('/negozio interactive buttons', () => {
         it('returns the standard insufficient coins message when the wallet is too low', async () => {
             const rpgView = rpg();
             const dispatcher = buildDispatcher(rpgView);
-            rpgView.getOrCreatePlayer(buyer.userId); // 100 coins < spada (500)
+            rpgView.getOrCreatePlayer(buyer.userId); // 100 monete < spada (500)
             const out = await run(dispatcher, '/acquista spada', buyer);
             assert.equal(out.includes('Non hai abbastanza monete'), true);
             assert.equal(rpgView.getInventory(buyer.userId).spada, undefined);
@@ -169,11 +169,11 @@ describe('/negozio interactive buttons', () => {
         it('always charges the identity of the user who sends the command, never an id from the button', async () => {
             const rpgView = rpg();
             const dispatcher = buildDispatcher(rpgView);
-            rpgView.getOrCreatePlayer(buyer.userId); // A: 100 coins
-            rpgView.getOrCreatePlayer(other.userId); // B: 100 coins
+            rpgView.getOrCreatePlayer(buyer.userId); // A: 100 monete
+            rpgView.getOrCreatePlayer(other.userId); // B: 100 monete
             const buyerWalletBefore = rpgView.getWalletBalance(buyer.userId);
             const otherWalletBefore = rpgView.getWalletBalance(other.userId);
-            // "other" presses a button whose id is /acquista pozione; only B pays.
+            // "other" preme un bottone il cui id è /acquista pozione; paga solo B.
             await run(dispatcher, '/acquista pozione', other);
             assert.equal(rpgView.getWalletBalance(other.userId), otherWalletBefore - 50);
             assert.equal(rpgView.getWalletBalance(buyer.userId), buyerWalletBefore, 'A must not be charged');

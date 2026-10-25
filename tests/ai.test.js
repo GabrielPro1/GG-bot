@@ -79,7 +79,7 @@ describe('AI service', () => {
     });
     it('cannot access a chat belonging to another user', async () => {
         insertTestIdentity(db, 'u2');
-        service.createChat('u1'); // user1 owns chat 1
+        service.createChat('u1'); // l'utente u1 possiede la chat 1
         const result = await service.sendMessage('u2', 1, 'hi');
         assert.deepEqual(result, { ok: false, error: 'not_found' });
     });
@@ -92,7 +92,7 @@ describe('AI service', () => {
         await service.sendMessage('u1', 1, 'primo messaggio');
         await service.sendMessage('u1', 1, 'secondo messaggio');
         const lastCall = provider.calls[provider.calls.length - 1];
-        // Gemini role mapping: assistant -> model
+        // Mappatura dei ruoli per Gemini: assistant -> model
         assert.deepEqual(lastCall.map((m) => m.role), ['user', 'model', 'user']);
         assert.deepEqual(lastCall.map((m) => m.text), ['primo messaggio', 'Ciao! Come posso aiutarti?', 'secondo messaggio']);
     });
@@ -110,14 +110,14 @@ describe('AI service', () => {
     it('persists the conversation across a service rebuild (no RAM reliance)', async () => {
         service.createChat('u1');
         await service.sendMessage('u1', 1, 'come mi chiamo?');
-        // Rebuild a fresh service/provider on the same DB.
+        // Ricostruisce un servizio/provider nuovi sulla stessa DB.
         const provider2 = new FakeProvider('Sei Neo.');
         const service2 = new AIService(new AiRepository(db), provider2);
         const result = await service2.sendMessage('u1', 1, 'continua');
         assert.equal(result.ok, true);
         if (result.ok)
             assert.equal(result.reply, 'Sei Neo.');
-        // Provider saw the whole history, proving it was rebuilt from the DB.
+        // Il provider ha ricevuto la cronologia completa, quindi è stata ricostruita dalla DB.
         const call = provider2.calls[0];
         assert.equal(call.length, 3);
         assert.deepEqual(call.map((m) => m.text), ['come mi chiamo?', 'Ciao! Come posso aiutarti?', 'continua']);
@@ -129,7 +129,7 @@ describe('AI service', () => {
         assert.deepEqual(result, { ok: false, error: 'provider_error' });
         const chat = repo.findChat('u1', 1);
         const messages = repo.listMessages(chat.id);
-        // user message recorded, no assistant message fabricated
+        // il messaggio utente è registrato, nessun messaggio assistant inventato
         assert.equal(messages.length, 1);
         assert.equal(messages[0].role, 'user');
     });

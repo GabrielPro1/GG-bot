@@ -95,7 +95,7 @@ test('routes a message to the dispatcher and replies through the owning session 
             const dispatcher = {
                 handle: async (text, context) => {
                     dispatches.push({ text, sock });
-                    // simulate a command that replies -> must go through this session's socket
+                    // simula un comando che risponde -> deve passare dal socket di questa sessione
                     await context.reply('pong');
                     return true;
                 },
@@ -133,7 +133,7 @@ test('a session does not double-register its message handler', async () => {
     emitMessage(session.sock, '/ping');
     emitMessage(session.sock, '/menu');
     await new Promise((r) => setImmediate(r));
-    // 2 messages -> exactly 2 dispatches (would be 4 if the handler were registered twice)
+    // 2 messaggi -> esattamente 2 dispatch (sarebbero 4 se l'handler fosse registrato due volte)
     assert.equal(dispatches, 2);
 });
 test('sendButtons relays a well-formed quick_reply native-flow payload with biz nodes', async () => {
@@ -181,7 +181,7 @@ test('sendButtons relays a well-formed quick_reply native-flow payload with biz 
     assert.equal(second.name, 'quick_reply');
     const paramsSecond = JSON.parse(second.buttonParamsJson);
     assert.deepEqual(paramsSecond, { display_text: '⚔️ Compra Spada', id: '/acquista spada' });
-    // JID is a private chat -> must include both biz and bot nodes, with biz FIRST
+    // JID è una chat privata -> deve includere sia il nodo biz sia bot, con biz per PRIMO
     const additionalNodes = options.additionalNodes;
     assert.ok(Array.isArray(additionalNodes), 'must provide additionalNodes for native flow');
     assert.equal(additionalNodes.length, 2, 'private chat must carry two nodes');
@@ -194,7 +194,7 @@ test('sendButtons relays a well-formed quick_reply native-flow payload with biz 
     assert.ok(Array.isArray(biz.content) &&
         biz.content[0]?.tag === 'interactive' &&
         biz.content[1] === undefined, 'biz node must carry only the interactive/native_flow child');
-    // the click id must route to /acquista and never embed a user identifier
+    // l'id del click deve instradare a /acquista e non contenere mai un identificatore utente
     assert.equal(paramsFirst.id, '/acquista pozione');
     assert.equal(paramsSecond.id.includes('@'), false);
 });

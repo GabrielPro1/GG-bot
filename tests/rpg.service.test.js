@@ -17,7 +17,7 @@ describe('RpgService', () => {
         repo = new PlayerRepository(db);
         rpg = new RpgService(repo);
     });
-    // --- player creation ---
+    // --- creazione player ---
     it('getOrCreatePlayer creates initial player', () => {
         const p = rpg.getOrCreatePlayer(uid);
         assert.equal(p.userId, uid);
@@ -25,7 +25,7 @@ describe('RpgService', () => {
         assert.equal(p.walletCoins, 100);
         assert.equal(p.energy, 100);
     });
-    // --- persistence/reload ---
+    // --- persistenza/ricarica ---
     it('data persists on a fresh repository', () => {
         const p = rpg.getOrCreatePlayer(uid);
         p.level = 3;
@@ -38,13 +38,13 @@ describe('RpgService', () => {
         assert.equal(loaded.level, 3);
         assert.equal(loaded.walletCoins, 250);
     });
-    // --- wallet + bank ---
+    // --- portafoglio + banca ---
     it('getWalletBalance and getBankBalance return correct values', () => {
         rpg.getOrCreatePlayer(uid);
         assert.equal(rpg.getWalletBalance(uid), 100);
         assert.equal(rpg.getBankBalance(uid), 0);
     });
-    // --- deposit ---
+    // --- deposito ---
     it('deposit transfers coins from wallet to bank', () => {
         rpg.getOrCreatePlayer(uid);
         const result = rpg.deposit(uid, 30);
@@ -61,7 +61,7 @@ describe('RpgService', () => {
         if (!result.ok)
             assert.equal(result.error, 'insufficient_wallet');
     });
-    // --- withdraw ---
+    // --- prelievo ---
     it('withdraw transfers coins from bank to wallet', () => {
         rpg.getOrCreatePlayer(uid);
         rpg.deposit(uid, 50);
@@ -79,7 +79,7 @@ describe('RpgService', () => {
         if (!result.ok)
             assert.equal(result.error, 'insufficient_bank');
     });
-    // --- spendWallet ---
+    // --- spendWallet (spesa dal portafoglio) ---
     it('spendWallet succeeds with sufficient balance', () => {
         rpg.getOrCreatePlayer(uid);
         const result = rpg.spendWallet(uid, 40);
@@ -94,7 +94,7 @@ describe('RpgService', () => {
         if (!result.ok)
             assert.equal(result.error, 'insufficient_wallet');
     });
-    // --- inventory ---
+    // --- inventario ---
     it('addItem adds to inventory and getInventory returns it', () => {
         rpg.getOrCreatePlayer(uid);
         const res = rpg.addItem(uid, 'pozione', 3);
@@ -113,10 +113,10 @@ describe('RpgService', () => {
         if (!res.ok)
             assert.equal(res.error, 'unknown_item');
     });
-    // --- equipment ---
+    // --- equipaggiamento ---
     it('equipItem equips a weapon and unequipItem removes it', () => {
         const p = rpg.getOrCreatePlayer(uid);
-        // Give the player a weapon in inventory
+        // Metti una spada nell'inventario del player
         rpg.addItem(uid, 'spada', 1);
         assert.equal(p.inventory['spada'], 1);
         const equipRes = rpg.equipItem(uid, 'spada');
@@ -137,7 +137,7 @@ describe('RpgService', () => {
         if (!res.ok)
             assert.equal(res.error, 'not_in_inventory');
     });
-    // --- useItem ---
+    // --- useItem (uso di un oggetto) ---
     it('useItem consumes a potion and restores energy', () => {
         const p = rpg.getOrCreatePlayer(uid);
         p.energy = 50;
@@ -159,7 +159,7 @@ describe('RpgService', () => {
         if (!res.ok)
             assert.equal(res.error, 'energy_full');
     });
-    // --- energy ---
+    // --- energia ---
     it('consumeEnergy reduces energy', () => {
         rpg.getOrCreatePlayer(uid);
         const res = rpg.consumeEnergy(uid, 30);
@@ -181,9 +181,9 @@ describe('RpgService', () => {
         const res = rpg.restoreEnergy(uid, 50);
         assert.equal(res.ok, true);
         if (res.ok)
-            assert.equal(res.energy, 100); // capped at maxEnergy
+            assert.equal(res.energy, 100); // limitata a maxEnergy
     });
-    // --- daily claim ---
+    // --- riscossione giornaliera ---
     it('claimDaily gives reward on first claim', () => {
         rpg.getOrCreatePlayer(uid);
         const now = 1000000;
@@ -201,7 +201,7 @@ describe('RpgService', () => {
         const res = rpg.claimDaily(uid, now + 1000);
         assert.equal(res.claimed, false);
     });
-    // --- combat cooldown ---
+    // --- cooldown combattimento ---
     it('startCombat sets combatCooldownUntil on attacker', () => {
         rpg.getOrCreatePlayer(uid);
         rpg.getOrCreatePlayer(uid2);
@@ -216,7 +216,7 @@ describe('RpgService', () => {
         assert.ok(p);
         assert.equal(p.combatCooldownUntil, now + 10 * 60 * 1000);
     });
-    // --- hunt cooldown ---
+    // --- cooldown caccia ---
     it('hunt sets huntCooldownUntil', () => {
         rpg.getOrCreatePlayer(uid);
         const now = 1000000;
@@ -232,12 +232,12 @@ describe('RpgService', () => {
         assert.ok(p);
         assert.equal(p.huntCooldownUntil, now + 5 * 60 * 1000);
     });
-    // --- robbery cooldown ---
+    // --- cooldown rapina ---
     it('rob sets robberyCooldown on successful robbery', () => {
         rpg.getOrCreatePlayer(uid);
         rpg.getOrCreatePlayer(uid2);
         const now = 1000000;
-        // rng: first call 0.2 (< 0.65 success chance), second call 0.15 (20% loot)
+        // rng: prima chiamata 0.2 (< 0.65 probabilità di successo), seconda chiamata 0.15 (20% loot)
         let callCount = 0;
         const rng = () => {
             callCount++;
@@ -254,7 +254,7 @@ describe('RpgService', () => {
         rpg.getOrCreatePlayer(uid);
         rpg.getOrCreatePlayer(uid2);
         const now = 1000000;
-        // rng: first call 0.2 (loot), second call 0.8 (>= 0.65 => jailed)
+        // rng: prima chiamata 0.2 (loot), seconda chiamata 0.8 (>= 0.65 => in prigione)
         let callCount = 0;
         const rng = () => {
             callCount++;
@@ -267,13 +267,13 @@ describe('RpgService', () => {
         assert.ok(p.robberyCooldown);
         assert.equal(p.robberyCooldown.jailed, true);
     });
-    // --- mission progress ---
+    // --- progresso missioni ---
     it('trackMissionProgress records progress for active missions', () => {
         rpg.getOrCreatePlayer(uid);
         const now = Date.now();
         const dayKey = dayKeyFromDate(new Date(now));
         const activeMissions = selectMissionsForDay(dayKey);
-        // Find a combat mission if one is active today
+        // Trova una missione di combattimento se ce n'è una attiva oggi
         const combatMission = activeMissions.find((m) => m.goalType === 'combat');
         if (combatMission) {
             rpg.trackMissionProgress(uid, 'combat', now);
@@ -288,10 +288,10 @@ describe('RpgService', () => {
         const now = Date.now();
         const dayKey = dayKeyFromDate(new Date(now));
         const activeMissions = selectMissionsForDay(dayKey);
-        // Find a daily mission (target=1) and complete it
+        // Trova una missione daily (target=1) e completala
         const dailyMission = activeMissions.find((m) => m.goalType === 'daily');
         if (dailyMission) {
-            // Claim daily first to trigger trackMissionProgress('daily')
+            // Riscuoti prima il daily per attivare trackMissionProgress('daily')
             rpg.claimDaily(uid, now);
             const claimRes = rpg.claimMission(uid, dailyMission.id, now);
             assert.equal(claimRes.ok, true);
@@ -319,12 +319,12 @@ describe('RpgService', () => {
         const dk1 = dayKeyFromDate(new Date(day1));
         const dk2 = dayKeyFromDate(new Date(day2));
         if (dk1 !== dk2) {
-            // Force mission state for day 1
+            // Forza lo stato della missione per il giorno 1
             const player = rpg.getOrCreatePlayer(uid);
             player.missions['test-mission'] = { dayKey: dk1, progress: 99, claimed: true };
             repo.savePlayer(player);
-            // Track on day 2 should start fresh
-            // We use an active mission type for day 2
+            // Tracciare al giorno 2 deve ripartire da zero
+            // Usiamo un tipo di missione attivo per il giorno 2
             const activeMissions = selectMissionsForDay(dk2);
             if (activeMissions.length > 0) {
                 rpg.trackMissionProgress(uid, activeMissions[0].goalType, day2);
@@ -339,12 +339,12 @@ describe('RpgService', () => {
             }
         }
     });
-    // --- combat PvP ---
+    // --- combattimento PvP ---
     it('startCombat modifies both attacker and defender', () => {
         rpg.getOrCreatePlayer(uid);
         rpg.getOrCreatePlayer(uid2);
         const now = 1000000;
-        // Force a draw: equal damage -> both get draw xp/coins
+        // Forza un pareggio: danni uguali -> entrambi ricevono xp/monete da pareggio
         const deterministic = {
             rollAttackerCritical: () => false,
             rollDefenderCritical: () => false,
@@ -355,7 +355,7 @@ describe('RpgService', () => {
         assert.equal(res.ok, true);
         if (res.ok) {
             assert.equal(res.outcome, 'draw');
-            // Both get COMBAT_COINS_DRAW=10 and COMBAT_XP_DRAW=10
+            // Entrambi ricevono COMBAT_COINS_DRAW=10 e COMBAT_XP_DRAW=10
             assert.equal(rpg.getWalletBalance(uid), beforeAtkWallet + 10);
             assert.equal(rpg.getWalletBalance(uid2), beforeDefWallet + 10);
         }
@@ -381,7 +381,7 @@ describe('RpgService', () => {
         if (!res.ok)
             assert.equal(res.reason, 'target_not_found');
     });
-    // --- rob ---
+    // --- rapina ---
     it('rob success: thief gains, victim loses', () => {
         rpg.getOrCreatePlayer(uid);
         const victim = rpg.getOrCreatePlayer(uid2);
@@ -391,7 +391,7 @@ describe('RpgService', () => {
         let callCount = 0;
         const rng = () => {
             callCount++;
-            // first call => loot percentage, second call => success (< 0.65)
+            // prima chiamata => percentuale loot, seconda chiamata => successo (< 0.65)
             return callCount === 1 ? 0.2 : 0.1;
         };
         const beforeThief = rpg.getWalletBalance(uid);
@@ -414,7 +414,7 @@ describe('RpgService', () => {
         const res = rpg.rob(uid, uid, { now: 1000000 });
         assert.equal(res.outcome, 'self_target');
     });
-    // --- leaderboard ---
+    // --- classifica ---
     it('getLeaderboardByLevel sorts by level desc', () => {
         const p1 = rpg.getOrCreatePlayer(uid);
         p1.level = 5;
@@ -443,20 +443,20 @@ describe('RpgService', () => {
     it('getLeaderboardByWealth sorts by total wealth desc', () => {
         const p1 = rpg.getOrCreatePlayer(uid);
         p1.walletCoins = 500;
-        p1.bankCoins = 300; // total 800
+        p1.bankCoins = 300; // totale 800
         repo.savePlayer(p1);
         const p2 = rpg.getOrCreatePlayer(uid2);
         p2.walletCoins = 1000;
-        p2.bankCoins = 0; // total 1000
+        p2.bankCoins = 0; // totale 1000
         repo.savePlayer(p2);
         const lb = rpg.getLeaderboardByWealth();
         assert.equal(lb[0].userId, uid2);
         assert.equal(lb[1].userId, uid);
     });
-    // --- purchase flow ---
+    // --- flusso di acquisto ---
     it('purchaseItem succeeds and deducts wallet coins', () => {
         rpg.getOrCreatePlayer(uid);
-        const res = rpg.purchaseItem(uid, 'pozione'); // price: 50
+        const res = rpg.purchaseItem(uid, 'pozione'); // prezzo: 50
         assert.equal(res.ok, true);
         if (res.ok) {
             assert.equal(res.quantityOwned, 1);
@@ -466,19 +466,19 @@ describe('RpgService', () => {
     });
     it('purchaseItem fails with insufficient wallet', () => {
         rpg.getOrCreatePlayer(uid);
-        const res = rpg.purchaseItem(uid, 'spada'); // price: 500, wallet: 100
+        const res = rpg.purchaseItem(uid, 'spada'); // prezzo: 500, wallet: 100
         assert.equal(res.ok, false);
         if (!res.ok)
             assert.equal(res.error, 'insufficient_wallet');
     });
-    // --- hunt ---
+    // --- caccia ---
     it('hunt victory gives coins and xp', () => {
         rpg.getOrCreatePlayer(uid);
         const now = 1000000;
         const deterministic = {
             pickMonsterIndex: () => 0, // ratto
-            rollPlayerCritical: () => true, // crit => playerDamage * 2 => always win vs ratto
-            rollRange: (_min, max) => max, // max reward
+            rollPlayerCritical: () => true, // crit => playerDamage * 2 => vince sempre contro ratto
+            rollRange: (_min, max) => max, // ricompensa massima
             rollLootDrop: () => false,
         };
         const beforeWallet = rpg.getWalletBalance(uid);
@@ -494,8 +494,8 @@ describe('RpgService', () => {
     it('hunt defeat gives no coins and no xp', () => {
         rpg.getOrCreatePlayer(uid);
         const now = 1000000;
-        // Pick the strongest monster (orco, defense=12, attack=22)
-        // Give player low attack/defense to guarantee defeat
+        // Scegli il mostro più forte (orco, defense=12, attack=22)
+        // Dai al player attacco/difesa bassi per garantire la sconfitta
         const p = rpg.getOrCreatePlayer(uid);
         p.attack = 1;
         p.defense = 1;

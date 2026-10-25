@@ -2,8 +2,8 @@ import { buildMenuSections } from '../../lib/commands/menu-sections.js';
 const USAGE_HINT = 'Usa /menu per scegliere una categoria.';
 
 /**
- * Shows the commands of a single category. Reached from the top level menu,
- * where every row points at `/sezione <category>`.
+ * Mostra i comandi di una singola categoria. Si raggiunge dal menu principale,
+ * dove ogni riga punta a `/sezione <categoria>`.
  */
 export default {
     name: 'sezione',

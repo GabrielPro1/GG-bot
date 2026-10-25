@@ -128,7 +128,7 @@ describe('PlayerRepository', () => {
         player.walletCoins = 1234;
         player.inventory = { pozione: 3 };
         repo.savePlayer(player);
-        // Simulate a "restart": create entirely new repo on same DB
+        // Simula un "riavvio": crea un repo completamente nuovo sulla stessa DB
         const newRepo = new PlayerRepository(db);
         const loaded = newRepo.getPlayer(userId);
         assert.ok(loaded);
@@ -159,7 +159,7 @@ describe('PlayerRepository', () => {
                 throw new Error('boom');
             });
         }, /boom/);
-        // Create a fresh repo to bypass cache and verify DB state
+        // Crea un repo nuovo per bypassare la cache e verificare lo stato della DB
         const freshRepo = new PlayerRepository(db);
         const loaded = freshRepo.getPlayer(userId);
         assert.ok(loaded);
@@ -179,7 +179,7 @@ describe('PlayerRepository', () => {
     it('true restart: data survives closing and reopening DB via temp file', async () => {
         const tempPath = createTempDbPath();
         try {
-            // Phase 1: create DB, populate, close
+            // Fase 1: crea la DB, popolala, chiudila
             {
                 const db1 = openDatabase(tempPath);
                 insertTestIdentity(db1, 'restart-user');
@@ -191,7 +191,7 @@ describe('PlayerRepository', () => {
                 repo1.savePlayer(p);
                 db1.close();
             }
-            // Phase 2: reopen DB, verify
+            // Fase 2: riapri la DB, verifica
             {
                 const db2 = openDatabase(tempPath);
                 const repo2 = new PlayerRepository(db2);

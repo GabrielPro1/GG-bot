@@ -76,7 +76,7 @@ test('restores multiple sessions', async () => {
 test('ignores main ./auth-style files at the auth root (never treated as session)', async () => {
     const authRoot = await tempAuthDir();
     try {
-        // main session writes creds.json and other files directly in authRoot
+        // la sessione principale scrive creds.json e altri file direttamente in authRoot
         await writeFile(path.join(authRoot, 'creds.json'), '{"me":{}}');
         await writeFile(path.join(authRoot, 'app-state-sync-key-1.json'), '{}');
         const manager = new SessionManager({ authRoot, socketFactory: makeStubFactory() });
