@@ -14,6 +14,10 @@ auth/
 # NEVER commit anything under data/.
 data/
 
+# School PDF library: book files are local content, never commit them.
+libri/*.pdf
+libri/*.PDF
+
 # Backups
 backups/
 
