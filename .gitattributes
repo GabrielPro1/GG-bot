@@ -1,0 +1,2 @@
+# Gli script girano su Linux (Termux/proot): devono avere fine riga LF.
+*.sh text eol=lf
