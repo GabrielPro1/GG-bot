@@ -15,8 +15,9 @@ failed to map segment from shared object
 ```
 
 Soluzione: il progetto resta su `/sdcard`, ma `node_modules` vive in una
-directory eseguibile del proot (`/root/GG-Bot-deps/node_modules`) e viene
-collegato al progetto con un bind mount ricreato a ogni avvio.
+directory eseguibile del proot (`/root/GG-Bot-node_modules`) e viene montato
+dentro il progetto come `node_modules`: lo vedi e lo usi lì, accanto al codice,
+senza gestire a mano la cartella in `/root`.
 
 Inoltre il `pm2` di Termux gira con Node Bionic e non carica gli addon glibc,
 quindi il processo del bot deve girare dentro il proot Ubuntu.
@@ -41,33 +42,37 @@ Dentro il proot:
 
 ```bash
 apt update && apt install -y nodejs npm curl tar
+cd /sdcard/Documents/GG-Bot
 
-# Le dipendenze stanno fuori da /sdcard, in una cartella-progetto del proot.
-mkdir -p /root/GG-Bot-deps
-cp /sdcard/Documents/GG-Bot/package.json \
-   /sdcard/Documents/GG-Bot/package-lock.json \
-   /root/GG-Bot-deps/
-cd /root/GG-Bot-deps
-
-# Installa ripetendo: ogni tentativo conserva in cache i pacchetti già presi.
+# Installa dalla cartella del progetto: start.sh monta node_modules dentro
+# il progetto, quindi npm scrive lì come in un progetto normale.
+# Ripeti: ogni tentativo conserva in cache i pacchetti già presi.
 for i in 1 2 3 4 5 6; do
     echo "=== tentativo $i ==="
-    UV_THREADPOOL_SIZE=1 npm install --maxsockets 1 --no-audit --no-fund && break
+    UV_THREADPOOL_SIZE=1 sh ./start.sh npm install --maxsockets 1 --no-audit --no-fund && break
     sleep 2
 done
 ```
 
-Il progetto resta in `/sdcard/Documents/GG-Bot`; solo `node_modules` sta in
-`/root/GG-Bot-deps`. Non copiare `node_modules` da Windows: i binding nativi
-sono per un'altra piattaforma.
+Da fuori `node_modules` è dentro `/sdcard/Documents/GG-Bot`, accanto al codice.
+Fisicamente i file stanno in `/root/GG-Bot-node_modules`, perché `/sdcard` è
+noexec: il bind mount li rende visibili al progetto. Non devi gestire la
+cartella in `/root` a mano: ci pensa `start.sh`.
 
-`start.sh` collega automaticamente `/root/GG-Bot-deps/node_modules` a
-`/sdcard/Documents/GG-Bot/node_modules`. Se le dipendenze sono in un'altra
-cartella, puoi indicarla con `NODE_MODULES_DIR=/percorso/node_modules`.
+Non copiare `node_modules` da Windows: i binding nativi sono per un'altra
+piattaforma.
+
+`start.sh` accetta anche un comando da eseguire nella cartella del progetto,
+con le dipendenze già montate:
+
+```bash
+sh ./start.sh npm install
+sh ./start.sh node index.js
+```
 
 Se hai già un `node_modules` funzionante (contiene
-`better-sqlite3/package.json` e `@napi-rs/`), puoi saltare l'installazione e
-passare direttamente all'avvio.
+`node_modules/better-sqlite3/package.json` e `node_modules/@napi-rs/`), puoi
+saltare l'installazione e passare direttamente all'avvio.
 
 ### Errore `ENOENT ... _cacache/tmp` durante `npm install`
 
@@ -82,21 +87,21 @@ pacchetti già scaricati, quindi i buchi diminuiscono. Se dopo 6 tentativi non
 Puoi anche aumentare i retry e ridurre ancora la concorrenza:
 
 ```bash
-cd /root/GG-Bot-deps
-UV_THREADPOOL_SIZE=1 npm install --maxsockets 1 --fetch-retries 10 \
+cd /sdcard/Documents/GG-Bot
+UV_THREADPOOL_SIZE=1 sh ./start.sh npm install --maxsockets 1 --fetch-retries 10 \
     --no-audit --no-fund
 ```
 
 ### Se npm non riesce proprio
 
 `node_modules` va costruito su Linux ARM64 fuori da proot e poi copiato in
-`/root/GG-Bot-deps/`. Le strade pratiche sono due:
+`/root/GG-Bot-node_modules`. Le strade pratiche sono due:
 
 1. un runner GitHub Actions `ubuntu-24.04-arm` che esegue `npm ci` e pubblica
    `node_modules` come artifact;
 2. una macchina Linux ARM64 con la stessa versione di Node.
 
-In entrambi i casi il risultato va copiato in `/root/GG-Bot-deps/node_modules`.
+In entrambi i casi il risultato va copiato in `/root/GG-Bot-node_modules`.
 
 ## Avvio manuale
 
@@ -107,8 +112,8 @@ cd /sdcard/Documents/GG-Bot
 sh ./start.sh
 ```
 
-`start.sh` controlla che `/root/GG-Bot-deps/node_modules` esista, ricrea il
-bind mount su `./node_modules` e lancia `node index.js`.
+`start.sh` crea `/root/GG-Bot-node_modules` se manca, monta la cartella su
+`./node_modules` e lancia `node index.js`.
 
 ## Avvio con pm2
 
@@ -148,7 +153,8 @@ sh ./fix-native.sh
 ```
 
 Lo script scarica il pacchetto dalla registry npm e lo estrae in
-`/root/GG-Bot-deps/node_modules/@napi-rs/canvas-linux-arm64-gnu`. Per forzare
+`/root/GG-Bot-node_modules/@napi-rs/canvas-linux-arm64-gnu` (visibile anche
+come `node_modules/@napi-rs/canvas-linux-arm64-gnu`). Per forzare
 una versione diversa:
 
 ```bash
@@ -193,9 +199,11 @@ esista: se non c'è, copia un PDF qualsiasi nella cartella `libri/` e cambia
 - Non copiare `node_modules` da Windows.
 - `npm install` nel proot può fallire per il bug di proot: usa il ciclo di
   tentativi descritto sopra, oppure `fix-native.sh` se manca solo il binding.
-- `/root/GG-Bot-deps` è dentro la rootfs del proot: se reinstalli la distro
-  sparisce, ma si ricrea con `npm install`. Il progetto e i dati restano su
-  `/sdcard`.
+- Usa `npm install`, non `npm ci`: `npm ci` cancella `node_modules`, che qui è
+  un punto di mount.
+- `/root/GG-Bot-node_modules` è dentro la rootfs del proot: se reinstalli la
+  distro sparisce, ma si ricrea con `npm install`. Il progetto e i dati
+  restano su `/sdcard`.
 - La cache PDF vive in `data/pdf-cache` (gitignored) e va bene anche su
   `/sdcard`, perché non viene eseguita.
 
@@ -203,6 +211,6 @@ esista: se non c'è, copia un PDF qualsiasi nella cartella `libri/` e cambia
 
 | File            | Dove gira        | Scopo                                          |
 | --------------- | ---------------- | ---------------------------------------------- |
-| `start.sh`      | proot Ubuntu     | bind mount delle dipendenze + `node index.js`  |
+| `start.sh`      | proot Ubuntu     | monta `node_modules` nel progetto + `node index.js` |
 | `run-pm2.sh`    | Termux           | entra nel proot e lancia `start.sh`            |
 | `fix-native.sh` | proot Ubuntu     | installa il binding ARM64 di `@napi-rs/canvas` |

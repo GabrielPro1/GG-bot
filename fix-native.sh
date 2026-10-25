@@ -8,12 +8,12 @@
 # Va eseguito dentro il proot Ubuntu (vedi TERMUX.md), non in Termux.
 #
 # Variabili opzionali:
-#   NODE_MODULES_DIR        (default: /root/GG-Bot-deps/node_modules)
+#   NODE_MODULES_DIR        (default: /root/GG-Bot-node_modules)
 #   CANVAS_NATIVE_VERSION   (default: versione del wrapper installato, o 0.1.100)
 #   CANVAS_ARCH             (default: linux-arm64-gnu)
 set -eu
 
-NODE_MODULES_DIR="${NODE_MODULES_DIR:-/root/GG-Bot-deps/node_modules}"
+NODE_MODULES_DIR="${NODE_MODULES_DIR:-/root/GG-Bot-node_modules}"
 CANVAS_ARCH="${CANVAS_ARCH:-linux-arm64-gnu}"
 PACKAGE="@napi-rs/canvas-$CANVAS_ARCH"
 DEST="$NODE_MODULES_DIR/@napi-rs/canvas-$CANVAS_ARCH"
