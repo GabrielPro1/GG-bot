@@ -7,11 +7,11 @@
 #
 # Variabili opzionali:
 #   PROJECT_DIR       cartella del progetto (default: quella di questo script)
-#   NODE_MODULES_DIR  node_modules eseguibile (default: /root/GG-Bot-node_modules)
+#   NODE_MODULES_DIR  node_modules eseguibile (default: /root/GG-Bot-deps/node_modules)
 set -eu
 
 PROJECT_DIR="${PROJECT_DIR:-$(CDPATH= cd -- "$(dirname -- "$0")" && pwd)}"
-NODE_MODULES_DIR="${NODE_MODULES_DIR:-/root/GG-Bot-node_modules}"
+NODE_MODULES_DIR="${NODE_MODULES_DIR:-/root/GG-Bot-deps/node_modules}"
 MOUNT_POINT="$PROJECT_DIR/node_modules"
 
 is_mounted() {
