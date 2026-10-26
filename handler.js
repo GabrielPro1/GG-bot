@@ -1,4 +1,4 @@
-import { isJidGroup, isJidStatusBroadcast, proto, generateWAMessageFromContent, prepareWAMessageMedia, downloadMediaMessage, normalizeMessageContent, } from '@whiskeysockets/baileys';
+import { isJidGroup, isJidNewsletter, isJidStatusBroadcast, proto, generateWAMessageFromContent, prepareWAMessageMedia, downloadMediaMessage, normalizeMessageContent, } from '@whiskeysockets/baileys';
 import { disabledAiView } from './lib/ai/ai.service.js';
 import { handleAiModeMessage } from './lib/ai/ai-mode.js';
 import { loadMenuImage } from './lib/commands/menu-images.js';
@@ -160,8 +160,18 @@ export function registerMessageLogger(sock, identityService, dispatcher, ai = di
         try {
             if (message.key.fromMe)
                 return;
+            // Solo i messaggi in tempo reale vanno gestiti: la cronologia, i
+            // messaggi arrivati mentre il bot era offline e le altre
+            // sincronizzazioni arrivano come "append" e vanno ignorati.
+            if (type !== 'notify')
+                return;
+            const chatJid = message.key.remoteJid;
+            // I canali (@newsletter) e gli status non sono chat: non vanno né
+            // loggati né processati.
+            if (!chatJid || isJidStatusBroadcast(chatJid) || isJidNewsletter(chatJid))
+                return;
             const summary = summarizeMessage(message.message);
-            const origin = type === 'notify' ? 'incoming' : `history (${type})`;
+            const origin = 'incoming';
             const identity = identityService.fromMessage(message);
             const lines = [
                 `${origin}:`,
@@ -182,9 +192,6 @@ export function registerMessageLogger(sock, identityService, dispatcher, ai = di
                 lines.push(`  content        : ${summary.preview}`);
             }
             console.log(lines.join('\n'));
-            const chatJid = message.key.remoteJid;
-            if (!chatJid || isJidStatusBroadcast(chatJid))
-                return;
             if (!identity)
                 return;
             const text = extractText(message.message);
@@ -207,7 +214,7 @@ export function registerMessageLogger(sock, identityService, dispatcher, ai = di
             }
             if (ai.enabled && ai.activeChat(identity.userId) !== null) {
                 let image = null;
-                if (isImageMessage(message.message) && type === 'notify') {
+                if (isImageMessage(message.message)) {
                     image = await tryDownloadImage(message);
                     if (image === null) {
                         await sock.sendMessage(chatJid, { text: AI_IMAGE_ERROR });
@@ -224,7 +231,7 @@ export function registerMessageLogger(sock, identityService, dispatcher, ai = di
                 if (routed === 'ai')
                     return;
             }
-            if (!text || type !== 'notify') {
+            if (!text) {
                 console.log(`[dbg-click] DROPPED text=${text ?? '(null)'} type=${type} id=${message.key.id ?? '-'}`);
                 return;
             }

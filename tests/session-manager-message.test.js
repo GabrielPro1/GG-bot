@@ -342,3 +342,94 @@ test('T-F. normal text messages still work', async () => {
     assert.equal(dispatches.length, 1);
     assert.equal(dispatches[0].text, '/ping');
 });
+test('ignora e non logga i messaggi dei canali newsletter', async () => {
+    const dispatches = [];
+    let logged = '';
+    const originalLog = console.log;
+    console.log = (...args) => {
+        logged += `${args.join(' ')}\n`;
+    };
+    try {
+        const manager = new SessionManager({
+            socketFactory: makeStubFactory(),
+            onSocketCreated: (sock) => {
+                const id = new IdentityService({}, undefined);
+                const dispatcher = {
+                    handle: async (text) => {
+                        dispatches.push(text);
+                        return true;
+                    },
+                };
+                registerMessageLogger(sock, id, dispatcher);
+            },
+        });
+        const session = await manager.createSession('newsletter');
+        session.sock.ev.emit('messages.upsert', {
+            messages: [
+                {
+                    key: {
+                        remoteJid: '120363414102181505@newsletter',
+                        id: 'newsletter-1',
+                        fromMe: false,
+                    },
+                    message: { conversation: '/ping' },
+                },
+            ],
+            type: 'notify',
+        });
+        await new Promise((r) => setImmediate(r));
+    }
+    finally {
+        console.log = originalLog;
+    }
+    assert.deepEqual(dispatches, [], 'un canale non deve far scattare comandi');
+    assert.equal(logged.includes('@newsletter'), false, 'un canale non deve essere loggato');
+});
+test('ignora cronologia e messaggi offline arrivati come append', async () => {
+    const dispatches = [];
+    let aiChecks = 0;
+    let logged = '';
+    const originalLog = console.log;
+    console.log = (...args) => {
+        logged += `${args.join(' ')}\n`;
+    };
+    try {
+        const manager = new SessionManager({
+            socketFactory: makeStubFactory(),
+            onSocketCreated: (sock) => {
+                const id = new IdentityService({}, undefined);
+                const dispatcher = {
+                    handle: async (text) => {
+                        dispatches.push(text);
+                        return true;
+                    },
+                };
+                const ai = {
+                    enabled: true,
+                    activeChat: () => {
+                        aiChecks += 1;
+                        return null;
+                    },
+                };
+                registerMessageLogger(sock, id, dispatcher, ai);
+            },
+        });
+        const session = await manager.createSession('history');
+        session.sock.ev.emit('messages.upsert', {
+            messages: [
+                {
+                    key: { remoteJid: JID, id: 'history-1', fromMe: false },
+                    message: { conversation: '/ping' },
+                },
+            ],
+            type: 'append',
+        });
+        await new Promise((r) => setImmediate(r));
+    }
+    finally {
+        console.log = originalLog;
+    }
+    assert.deepEqual(dispatches, [], 'la cronologia non deve far scattare comandi');
+    assert.equal(aiChecks, 0, 'la cronologia non deve essere passata all\'AI');
+    assert.equal(logged.includes('incoming'), false, 'la cronologia non deve essere loggata come messaggio in arrivo');
+});
