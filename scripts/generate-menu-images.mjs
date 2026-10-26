@@ -243,8 +243,8 @@ const CATEGORIES = [
     {
         key: 'other',
         index: '07',
-        title: 'ALTRO',
-        subtitle: 'Tutti gli altri comandi',
+        title: 'MENÙ PRINCIPALE',
+        subtitle: 'Scegli una categoria per iniziare',
         accent: '#94a3b8',
         accent2: '#475569',
         icon: drawFolder,
@@ -418,10 +418,10 @@ function drawTitle(ctx, category) {
     ctx.textAlign = 'left';
     ctx.textBaseline = 'alphabetic';
     let size = 104;
-    ctx.letterSpacing = '4px';
+    ctx.letterSpacing = category.title.length > 10 ? '1px' : '4px';
     while (size > 60) {
         ctx.font = fontSpec(size, DISPLAY, 700);
-        if (ctx.measureText(category.title).width <= 700)
+        if (ctx.measureText(category.title).width <= 760)
             break;
         size -= 2;
     }
