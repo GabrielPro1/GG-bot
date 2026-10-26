@@ -1,0 +1,24 @@
+# Configurazione Fly.io per GG Bot.
+# Sostituisci "app" con il nome che scegli (deve essere unico su Fly).
+app = "gg-bot-tuonome"
+primary_region = "fra"
+
+[build]
+
+[env]
+  # Il QR di primo accesso viene salvato qui, così si può scaricare con
+  # "fly sftp get". La cartella /data è il volume persistente.
+  QR_IMAGE_PATH = "/data/qr.png"
+
+[deploy]
+  # Una sola sessione WhatsApp: niente seconda macchina in parallelo.
+  strategy = "immediate"
+
+[[vm]]
+  cpu_kind = "shared"
+  cpus = 1
+  memory = "1gb"
+
+[mounts]
+  source = "gg_bot_data"
+  destination = "/data"
