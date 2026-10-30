@@ -183,6 +183,8 @@ export function registerMessageLogger(sock, identityService, dispatcher, ai = di
                 return;
             const summary = summarizeMessage(message.message);
             const origin = 'incoming';
+            const dashboard = dispatcher?.dashboard;
+            dashboard?.recordMessage?.(summary.kind);
             const identity = identityService.fromMessage(message);
             const lines = [
                 `${origin}:`,
@@ -226,6 +228,9 @@ export function registerMessageLogger(sock, identityService, dispatcher, ai = di
             const xpView = dispatcher?.rpg;
             if (text && typeof xpView?.awardChatXp === 'function') {
                 const xpResult = xpView.awardChatXp(identity.userId, text);
+                if (xpResult.awarded) {
+                    dashboard?.recordChatXp?.(xpResult.amount);
+                }
                 if (xpResult.awarded && xpResult.levelsGained > 0) {
                     void sock
                         .sendMessage(chatJid, { text: renderXpLevelUp(xpResult) })

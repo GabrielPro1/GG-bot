@@ -11,10 +11,12 @@ import { COMMAND_ALIASES } from './lib/commands/aliases.js';
 import { CommandDispatcher } from './lib/commands/dispatcher.js';
 import { CommandLoader } from './lib/commands/loader.js';
 import { loadOwnerServiceFromEnv } from './config.js';
-import { openDatabase } from './lib/db/index.js';
+import { DB_PATH, openDatabase } from './lib/db/index.js';
 import { AiRepository } from './lib/ai/ai.repository.js';
 import { AIService } from './lib/ai/ai.service.js';
 import { createGeminiProviderFromEnv } from './lib/ai/gemini.provider.js';
+import { DashboardService } from './lib/dashboard/dashboard.service.js';
+import { startDashboardServer } from './lib/dashboard/dashboard.server.js';
 console.log('GG Bot starting...');
 const db = openDatabase();
 const playerRepo = new PlayerRepository(db);
@@ -22,7 +24,15 @@ const registry = new CommandRegistry(COMMAND_ALIASES);
 const rpgService = new RpgService(playerRepo);
 const ownerService = loadOwnerServiceFromEnv();
 const aiService = new AIService(new AiRepository(db), createGeminiProviderFromEnv());
-const dispatcher = new CommandDispatcher(registry, rpgService, ownerService, aiService);
+const identityService = new IdentityService({}, db);
+const dashboardService = new DashboardService({
+    db,
+    rpg: rpgService,
+    identityService,
+    registry,
+    dbPath: DB_PATH,
+});
+const dispatcher = new CommandDispatcher(registry, rpgService, ownerService, aiService, dashboardService);
 const loader = new CommandLoader(registry);
 try {
     await loader.start();
@@ -30,7 +40,6 @@ try {
 catch (error) {
     console.error('[commands] initial load failed:', error);
 }
-const identityService = new IdentityService({}, db);
 rpgService.setNameResolver((userId) => {
     const identity = identityService.getById(userId);
     return identity?.username ?? null;
@@ -40,11 +49,18 @@ const sessionManager = new SessionManager({
         registerMessageLogger(sock, identityService, dispatcher, aiService);
     },
 });
+dashboardService.setSessionManager(sessionManager);
 try {
     await sessionManager.restoreSessions();
 }
 catch (error) {
     console.error('[sessions] restore failed at boot:', error);
+}
+try {
+    await startDashboardServer({ service: dashboardService });
+}
+catch (error) {
+    console.error('[dashboard] failed to start web dashboard:', error);
 }
 try {
     void startTelegramBot(sessionManager).catch((error) => {
@@ -55,9 +71,10 @@ catch (error) {
     console.error('Failed to start Telegram bot:', error);
 }
 try {
-    await connectWhatsApp({ identityService, dispatcher, ai: aiService });
+    await connectWhatsApp({ identityService, dispatcher, ai: aiService, dashboard: dashboardService });
 }
 catch (error) {
+    dashboardService.setWhatsAppState('close');
     console.error('Failed to start GG Bot:', error);
     process.exitCode = 1;
 }
