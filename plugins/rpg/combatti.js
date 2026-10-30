@@ -87,6 +87,7 @@ function renderCombatOutcome(result, attackerDisplay, defenderDisplay) {
         '🎁 Ricompense',
         `   ⭐ +${result.xp} XP`,
         `   🪙 +${result.coins} monete`,
+        ...(result.levelsGained > 0 ? ['', `🎉 LEVEL UP! Livello ${result.attackerLevel}`] : []),
         '',
         `❤️ Energia rimasta: ${result.energy}/${result.maxEnergy}`,
         '',

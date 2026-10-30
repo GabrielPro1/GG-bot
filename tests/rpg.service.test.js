@@ -1,6 +1,13 @@
 import { describe, it, beforeEach } from 'node:test';
 import assert from 'node:assert/strict';
-import { RpgService, dayKeyFromDate, selectMissionsForDay } from '../lib/rpg/rpg.service.js';
+import {
+    CHAT_XP_COOLDOWN_MS,
+    RpgService,
+    chatXpForMessage,
+    dayKeyFromDate,
+    selectMissionsForDay,
+    totalXpForLevel,
+} from '../lib/rpg/rpg.service.js';
 import { PlayerRepository } from '../lib/rpg/player.repository.js';
 import { createTestDb, insertTestIdentity, createTempDbPath, cleanupTempDir } from './helpers.js';
 import { openDatabase } from '../lib/db/index.js';
@@ -37,6 +44,65 @@ describe('RpgService', () => {
         assert.ok(loaded);
         assert.equal(loaded.level, 3);
         assert.equal(loaded.walletCoins, 250);
+    });
+    // --- XP globale dalla chat ---
+    it('awardChatXp assigns XP and respects the cooldown', () => {
+        const now = 1_000_000;
+        const first = rpg.awardChatXp(uid, 'ciao a tutti', now);
+        assert.equal(first.awarded, true);
+        assert.equal(first.amount, chatXpForMessage('ciao a tutti'));
+        assert.equal(rpg.getPlayer(uid)?.xp, first.amount);
+
+        const blocked = rpg.awardChatXp(uid, 'altro messaggio', now + CHAT_XP_COOLDOWN_MS - 1);
+        assert.equal(blocked.awarded, false);
+        assert.equal(blocked.reason, 'cooldown');
+
+        const second = rpg.awardChatXp(uid, 'altro messaggio', now + CHAT_XP_COOLDOWN_MS);
+        assert.equal(second.awarded, true);
+    });
+    it('awardChatXp ignores commands and short messages', () => {
+        const before = rpg.getOrCreatePlayer(uid).xp;
+        assert.equal(rpg.awardChatXp(uid, '/menu').awarded, false);
+        assert.equal(rpg.awardChatXp(uid, 'a').awarded, false);
+        const player = rpg.getOrCreatePlayer(uid);
+        assert.equal(player.xp, before);
+        assert.equal(player.lastChatXp, null);
+    });
+    it('awardChatXp levels up the RPG player and persists the cooldown', () => {
+        const now = 2_000_000;
+        const player = rpg.getOrCreatePlayer(uid);
+        player.xp = 95;
+        repo.savePlayer(player);
+
+        const result = rpg.awardChatXp(uid, 'messaggio abbastanza lungo', now);
+        assert.equal(result.awarded, true);
+        assert.ok(result.levelsGained >= 1);
+        assert.equal(result.level, 2);
+        assert.ok(result.xp < result.xpRequired);
+
+        const fresh = new RpgService(new PlayerRepository(db));
+        const loaded = fresh.getPlayer(uid);
+        assert.ok(loaded);
+        assert.equal(loaded.lastChatXp, now);
+        assert.equal(fresh.awardChatXp(uid, 'altro messaggio', now + 1_000).awarded, false);
+    });
+    it('getPlayerRank orders players by level and XP', () => {
+        const p1 = rpg.getOrCreatePlayer(uid);
+        p1.level = 5;
+        p1.xp = 50;
+        repo.savePlayer(p1);
+        const p2 = rpg.getOrCreatePlayer(uid2);
+        p2.level = 10;
+        p2.xp = 0;
+        repo.savePlayer(p2);
+
+        assert.deepEqual(rpg.getPlayerRank(uid), { position: 2, total: 2 });
+        assert.deepEqual(rpg.getPlayerRank(uid2), { position: 1, total: 2 });
+    });
+    it('totalXpForLevel accumulates the XP of the previous levels', () => {
+        assert.equal(totalXpForLevel(1), 0);
+        assert.equal(totalXpForLevel(2), 100);
+        assert.equal(totalXpForLevel(3), 300);
     });
     // --- portafoglio + banca ---
     it('getWalletBalance and getBankBalance return correct values', () => {

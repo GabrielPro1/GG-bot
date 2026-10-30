@@ -30,6 +30,7 @@ describe('PlayerRepository', () => {
         assert.equal(player.robberyCooldown, null);
         assert.equal(player.combatCooldownUntil, null);
         assert.equal(player.huntCooldownUntil, null);
+        assert.equal(player.lastChatXp, null);
         assert.deepEqual(player.inventory, {});
         assert.deepEqual(player.equipment, { weapon: null, armor: null, accessory: null });
         assert.deepEqual(player.missions, {});
@@ -59,6 +60,7 @@ describe('PlayerRepository', () => {
         player.robberyCooldown = { until: 2000, jailed: true };
         player.combatCooldownUntil = 3000;
         player.huntCooldownUntil = 4000;
+        player.lastChatXp = 5000;
         repo.savePlayer(player);
         const freshRepo = new PlayerRepository(db);
         const loaded = freshRepo.getPlayer(userId);
@@ -78,6 +80,7 @@ describe('PlayerRepository', () => {
         assert.deepEqual(loaded.robberyCooldown, { until: 2000, jailed: true });
         assert.equal(loaded.combatCooldownUntil, 3000);
         assert.equal(loaded.huntCooldownUntil, 4000);
+        assert.equal(loaded.lastChatXp, 5000);
     });
     it('inventory is serialized/deserialized correctly', () => {
         const player = repo.getOrCreatePlayer(userId);

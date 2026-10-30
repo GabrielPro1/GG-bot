@@ -80,6 +80,7 @@ function renderHuntOutcome(result) {
             '',
             `💰 Ricompensa: 🪙 +${result.rewardCoins}`,
             `✨ Esperienza: +${result.rewardXp} XP`,
+            ...(result.levelsGained > 0 ? ['', `🎉 LEVEL UP! Livello ${result.level}`] : []),
             '',
             ...renderLootSection(result.loot),
             `❤️ Energia: ${result.energy} / ${result.maxEnergy}`,

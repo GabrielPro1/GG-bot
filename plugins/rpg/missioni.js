@@ -42,6 +42,7 @@ function renderClaimResult(result) {
             '',
             `🪙 Monete: +${result.rewardCoins}`,
             `✨ Esperienza: +${result.rewardXp} XP`,
+            ...(result.levelsGained > 0 ? ['', `🎉 LEVEL UP! Livello ${result.level}`] : []),
             '',
             `👛 Wallet: 🪙 ${result.walletCoins}`,
             '',

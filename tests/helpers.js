@@ -39,6 +39,7 @@ CREATE TABLE IF NOT EXISTS players (
   robbery_cooldown      TEXT,
   combat_cooldown_until INTEGER,
   hunt_cooldown_until   INTEGER,
+  last_chat_xp          INTEGER,
   created_at            TEXT NOT NULL DEFAULT (datetime('now')),
   updated_at            TEXT NOT NULL DEFAULT (datetime('now')),
   FOREIGN KEY (user_id) REFERENCES identities(user_id) ON DELETE CASCADE

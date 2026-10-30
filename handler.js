@@ -122,6 +122,17 @@ function extractText(message) {
 function isImageMessage(message) {
     return message?.imageMessage != null;
 }
+function renderXpLevelUp(result) {
+    const extraLevels = result.levelsGained > 1 ? ` (+${result.levelsGained} livelli)` : '';
+    return [
+        '🎉 *LEVEL UP!*',
+        '',
+        `⭐ Nuovo livello: *${result.level}*${extraLevels}`,
+        `✨ XP: ${result.xp} / ${result.xpRequired}`,
+        '',
+        '💡 Usa /xp per vedere i tuoi progressi.',
+    ].join('\n');
+}
 /**
  * Scarica in memoria i byte dell'immagine di un messaggio ricevuto (mai salvata su
  * disco). Ritorna null se il messaggio non ha immagini, è troppo grande o il
@@ -211,6 +222,17 @@ export function registerMessageLogger(sock, identityService, dispatcher, ai = di
                     `hasIdentity=${identity !== null}`,
                 ];
                 console.log(dbg.join(' | '));
+            }
+            const xpView = dispatcher?.rpg;
+            if (text && typeof xpView?.awardChatXp === 'function') {
+                const xpResult = xpView.awardChatXp(identity.userId, text);
+                if (xpResult.awarded && xpResult.levelsGained > 0) {
+                    void sock
+                        .sendMessage(chatJid, { text: renderXpLevelUp(xpResult) })
+                        .catch((error) => {
+                            console.error('[xp] level-up message failed:', error instanceof Error ? error.message : error);
+                        });
+                }
             }
             if (ai.enabled && ai.activeChat(identity.userId) !== null) {
                 let image = null;
