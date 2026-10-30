@@ -82,6 +82,7 @@ describe('XP globale', () => {
         assert.match(output, /🌟 XP totali: 345/);
         assert.match(output, /🏅 Posizione: #2 su 2/);
         assert.match(output, /🎯 Mancano 255 XP per il livello 4/);
+        assert.doesNotMatch(output, /una volta ogni/i);
     });
 
     it('is reachable through its aliases', () => {

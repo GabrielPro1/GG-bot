@@ -1,7 +1,6 @@
 import { describe, it, beforeEach } from 'node:test';
 import assert from 'node:assert/strict';
 import {
-    CHAT_XP_COOLDOWN_MS,
     RpgService,
     chatXpForMessage,
     dayKeyFromDate,
@@ -46,19 +45,16 @@ describe('RpgService', () => {
         assert.equal(loaded.walletCoins, 250);
     });
     // --- XP globale dalla chat ---
-    it('awardChatXp assigns XP and respects the cooldown', () => {
+    it('awardChatXp assigns XP to every eligible message', () => {
         const now = 1_000_000;
         const first = rpg.awardChatXp(uid, 'ciao a tutti', now);
         assert.equal(first.awarded, true);
         assert.equal(first.amount, chatXpForMessage('ciao a tutti'));
         assert.equal(rpg.getPlayer(uid)?.xp, first.amount);
 
-        const blocked = rpg.awardChatXp(uid, 'altro messaggio', now + CHAT_XP_COOLDOWN_MS - 1);
-        assert.equal(blocked.awarded, false);
-        assert.equal(blocked.reason, 'cooldown');
-
-        const second = rpg.awardChatXp(uid, 'altro messaggio', now + CHAT_XP_COOLDOWN_MS);
+        const second = rpg.awardChatXp(uid, 'altro messaggio', now);
         assert.equal(second.awarded, true);
+        assert.equal(rpg.getPlayer(uid)?.xp, first.amount + second.amount);
     });
     it('awardChatXp ignores commands and short messages', () => {
         const before = rpg.getOrCreatePlayer(uid).xp;
@@ -68,7 +64,7 @@ describe('RpgService', () => {
         assert.equal(player.xp, before);
         assert.equal(player.lastChatXp, null);
     });
-    it('awardChatXp levels up the RPG player and persists the cooldown', () => {
+    it('awardChatXp levels up the RPG player and persists the progress', () => {
         const now = 2_000_000;
         const player = rpg.getOrCreatePlayer(uid);
         player.xp = 95;
@@ -83,8 +79,9 @@ describe('RpgService', () => {
         const fresh = new RpgService(new PlayerRepository(db));
         const loaded = fresh.getPlayer(uid);
         assert.ok(loaded);
-        assert.equal(loaded.lastChatXp, now);
-        assert.equal(fresh.awardChatXp(uid, 'altro messaggio', now + 1_000).awarded, false);
+        assert.equal(loaded.level, 2);
+        assert.equal(loaded.xp, result.xp);
+        assert.equal(fresh.awardChatXp(uid, 'altro messaggio', now + 1_000).awarded, true);
     });
     it('getPlayerRank orders players by level and XP', () => {
         const p1 = rpg.getOrCreatePlayer(uid);
