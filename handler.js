@@ -1,9 +1,25 @@
-import { isJidGroup, isJidNewsletter, isJidStatusBroadcast, proto, generateWAMessageFromContent, prepareWAMessageMedia, downloadMediaMessage, normalizeMessageContent, } from '@whiskeysockets/baileys';
+import { isJidGroup, proto, generateWAMessageFromContent, prepareWAMessageMedia, downloadMediaMessage, normalizeMessageContent, } from '@whiskeysockets/baileys';
 import { disabledAiView } from './lib/ai/ai.service.js';
 import { handleAiModeMessage } from './lib/ai/ai-mode.js';
 import { loadMenuImage } from './lib/commands/menu-images.js';
 import { renderSectionList } from './lib/commands/menu-text.js';
 const TEXT_PREVIEW_MAX_LENGTH = 100;
+const IGNORED_JID_SUFFIXES = ['@newsletter', '@broadcast'];
+/**
+ * Canali (@newsletter), status e broadcast list non sono chat: il bot non deve
+ * leggerli, contarne i messaggi né rispondere. Controlliamo tutti i JID della
+ * chiave perché a volte il canale arriva in un campo alternativo.
+ */
+function isIgnoredJid(jid) {
+    if (typeof jid !== 'string')
+        return false;
+    const normalized = jid.trim().toLowerCase();
+    return IGNORED_JID_SUFFIXES.some((suffix) => normalized.endsWith(suffix));
+}
+function isIgnoredMessage(message) {
+    const key = message?.key;
+    return [key?.remoteJid, key?.remoteJidAlt, key?.participant, key?.participantAlt].some(isIgnoredJid);
+}
 /** Limite superiore per i byte delle immagini inviate a Gemini (il limite dati inline è ~20MB). */
 const MAX_AI_IMAGE_BYTES = 20_000_000;
 const AI_IMAGE_ERROR = '⚠️ Non è stato possibile scaricare l\'immagine. Riprova.';
@@ -163,7 +179,13 @@ async function tryDownloadImage(message) {
 }
 export function registerMessageLogger(sock, identityService, dispatcher, ai = disabledAiView()) {
     sock.ev.on('messages.upsert', ({ messages, type }) => {
+        // Scarta subito cronologia e canali/broadcast, prima di qualsiasi log o
+        // elaborazione: non devono comparire nel terminale.
+        if (type !== 'notify')
+            return;
         for (const message of messages) {
+            if (isIgnoredMessage(message))
+                continue;
             void handleMessage(message, type);
         }
     });
@@ -179,7 +201,7 @@ export function registerMessageLogger(sock, identityService, dispatcher, ai = di
             const chatJid = message.key.remoteJid;
             // I canali (@newsletter) e gli status non sono chat: non vanno né
             // loggati né processati.
-            if (!chatJid || isJidStatusBroadcast(chatJid) || isJidNewsletter(chatJid))
+            if (!chatJid || isIgnoredMessage(message))
                 return;
             const summary = summarizeMessage(message.message);
             const origin = 'incoming';
@@ -208,23 +230,6 @@ export function registerMessageLogger(sock, identityService, dispatcher, ai = di
             if (!identity)
                 return;
             const text = extractText(message.message);
-            {
-                const topKeys = Object.keys(message.message ?? {});
-                const resp = message.message?.interactiveResponseMessage;
-                const nativeResp = resp?.nativeFlowResponseMessage;
-                const dbg = [
-                    `[dbg-click] messageType=${summary.kind}`,
-                    `topKeys=${JSON.stringify(topKeys)}`,
-                    `nativeFlow.name=${nativeResp?.name ?? '-'}`,
-                    `nativeFlow.version=${nativeResp?.version ?? '-'}`,
-                    `nativeFlow.paramsJson=${nativeResp?.paramsJson ?? '-'}`,
-                    `extractedText=${text ?? '-'}`,
-                    `upsertType=${type}`,
-                    `fromMe=${message.key.fromMe}`,
-                    `hasIdentity=${identity !== null}`,
-                ];
-                console.log(dbg.join(' | '));
-            }
             const xpView = dispatcher?.rpg;
             if (text && typeof xpView?.awardChatXp === 'function') {
                 const xpResult = xpView.awardChatXp(identity.userId, text);
@@ -259,7 +264,6 @@ export function registerMessageLogger(sock, identityService, dispatcher, ai = di
                     return;
             }
             if (!text) {
-                console.log(`[dbg-click] DROPPED text=${text ?? '(null)'} type=${type} id=${message.key.id ?? '-'}`);
                 return;
             }
             await dispatcher

@@ -86,6 +86,22 @@ test('registers the message handler on every managed session socket', async () =
     assert.ok(registered.some((s) => s === manager.getSession('alice')));
     assert.ok(registered.some((s) => s === manager.getSession('bob')));
 });
+test('silenzi i log interni di Baileys per impostazione predefinita', () => {
+    const previous = process.env.BAILEYS_LOG_LEVEL;
+    delete process.env.BAILEYS_LOG_LEVEL;
+    try {
+        const manager = new SessionManager({ socketFactory: makeStubFactory() });
+        assert.equal(manager.logLevel, 'silent');
+    }
+    finally {
+        if (previous === undefined) {
+            delete process.env.BAILEYS_LOG_LEVEL;
+        }
+        else {
+            process.env.BAILEYS_LOG_LEVEL = previous;
+        }
+    }
+});
 test('routes a message to the dispatcher and replies through the owning session socket', async () => {
     const dispatches = [];
     const manager = new SessionManager({
@@ -384,6 +400,70 @@ test('ignora e non logga i messaggi dei canali newsletter', async () => {
     }
     assert.deepEqual(dispatches, [], 'un canale non deve far scattare comandi');
     assert.equal(logged.includes('@newsletter'), false, 'un canale non deve essere loggato');
+});
+test('ignora canali nei JID alternativi e i broadcast', async () => {
+    const dispatches = [];
+    let logged = '';
+    const originalLog = console.log;
+    console.log = (...args) => {
+        logged += `${args.join(' ')}\n`;
+    };
+    try {
+        const manager = new SessionManager({
+            socketFactory: makeStubFactory(),
+            onSocketCreated: (sock) => {
+                const id = new IdentityService({}, undefined);
+                const dispatcher = {
+                    handle: async (text) => {
+                        dispatches.push(text);
+                        return true;
+                    },
+                };
+                registerMessageLogger(sock, id, dispatcher);
+            },
+        });
+        const session = await manager.createSession('newsletter-alt');
+        session.sock.ev.emit('messages.upsert', {
+            messages: [
+                {
+                    key: {
+                        remoteJid: JID,
+                        remoteJidAlt: '120363414102181505@newsletter',
+                        id: 'newsletter-alt-1',
+                        fromMe: false,
+                    },
+                    message: { conversation: '/ping' },
+                },
+                {
+                    key: {
+                        remoteJid: '120363414102181506@broadcast',
+                        id: 'broadcast-1',
+                        fromMe: false,
+                    },
+                    message: { conversation: '/ping' },
+                },
+                {
+                    key: {
+                        remoteJid: '120363414102181507@g.us',
+                        participant: JID,
+                        participantAlt: '120363414102181508@newsletter',
+                        id: 'newsletter-alt-2',
+                        fromMe: false,
+                    },
+                    message: { conversation: '/ping' },
+                },
+            ],
+            type: 'notify',
+        });
+        await new Promise((r) => setImmediate(r));
+    }
+    finally {
+        console.log = originalLog;
+    }
+    assert.deepEqual(dispatches, [], 'canali e broadcast non devono far scattare comandi');
+    assert.equal(logged.includes('@newsletter'), false, 'un canale non deve essere loggato');
+    assert.equal(logged.includes('@broadcast'), false, 'un broadcast non deve essere loggato');
+    assert.equal(logged.includes('incoming:'), false, 'i canali non devono comparire come messaggi in arrivo');
 });
 test('ignora cronologia e messaggi offline arrivati come append', async () => {
     const dispatches = [];
