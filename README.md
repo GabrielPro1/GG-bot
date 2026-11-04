@@ -160,10 +160,12 @@ BOT_OWNERS=1234@lid,999@s.whatsapp.net
 #### Dashboard web
 
 ```env
-DASHBOARD_TOKEN=
+DASHBOARD_PASSWORD=INSERISCI_UNA_PASSWORD_SICURA
 DASHBOARD_PORT=3000
 DASHBOARD_HOST=127.0.0.1
 ```
+
+La password è obbligatoria e deve avere almeno 8 caratteri: senza `DASHBOARD_PASSWORD` la dashboard non viene avviata.
 
 Configurazione predefinita:
 
@@ -171,12 +173,14 @@ Configurazione predefinita:
 - Host: `127.0.0.1`.
 - Accesso: solo dal computer su cui gira il bot.
 
-Per consentire l'accesso alla dashboard dalla rete locale, imposta un token di almeno 8 caratteri e modifica l'host:
+Per consentire l'accesso alla dashboard dalla rete locale, modifica l'host:
 
 ```env
-DASHBOARD_TOKEN=INSERISCI_UN_TOKEN_SICURO
+DASHBOARD_PASSWORD=INSERISCI_UNA_PASSWORD_SICURA
 DASHBOARD_HOST=0.0.0.0
 ```
+
+Per compatibilità, se `DASHBOARD_PASSWORD` è vuota viene usata `DASHBOARD_TOKEN`.
 
 Non esporre direttamente la dashboard su Internet. Per l'accesso remoto utilizza una soluzione sicura, ad esempio una VPN.
 
@@ -281,7 +285,7 @@ Mostra informazioni come:
 - Dimensione del database.
 - Informazioni sul sistema.
 
-Se hai configurato `DASHBOARD_TOKEN`, dovrai inserirlo nella schermata di accesso per visualizzare le statistiche.
+Alla schermata di accesso dovrai inserire la password configurata in `DASHBOARD_PASSWORD` per visualizzare le statistiche.
 
 ---
 
