@@ -184,6 +184,36 @@ Per compatibilità, se `DASHBOARD_PASSWORD` è vuota viene usata `DASHBOARD_TOKE
 
 Non esporre direttamente la dashboard su Internet. Per l'accesso remoto utilizza una soluzione sicura, ad esempio una VPN.
 
+#### Minecraft Java (RCON)
+
+Il comando `/mc` invia un comando alla console del server Minecraft Java tramite RCON. È riservato agli owner e richiede che bot e server siano sulla stessa macchina (o sulla stessa rete fidata).
+
+Nel `server.properties` del server abilita RCON:
+
+```properties
+enable-rcon=true
+rcon.port=25575
+rcon.password=INSERISCI_LA_PASSWORD_RCON
+```
+
+Poi configura il bot:
+
+```env
+MC_RCON_HOST=127.0.0.1
+MC_RCON_PORT=25575
+MC_RCON_PASSWORD=INSERISCI_LA_PASSWORD_RCON
+```
+
+Riavvia il server e il bot. Esempi:
+
+```text
+/mc list
+/mc say Ciao dal bot
+/mc whitelist add NomeGiocatore
+```
+
+RCON viaggia in chiaro: lascia `MC_RCON_HOST=127.0.0.1` e non aprire la porta `25575` verso Internet. Se `MC_RCON_PASSWORD` è vuota, `/mc` risponde che RCON non è configurato.
+
 #### Google Gemini (AI)
 
 ```env
@@ -385,6 +415,7 @@ Alcune precauzioni importanti:
 - Non caricare il file `.env` su GitHub.
 - Non condividere token Telegram o chiavi API Gemini.
 - Non esporre la dashboard direttamente su Internet.
+- Non esporre RCON su Internet: `/mc` è riservato agli owner e può eseguire qualsiasi comando della console.
 - Mantieni aggiornati Node.js e le dipendenze.
 
 Il repository include un `.gitignore` che esclude già file e cartelle sensibili, tra cui `.env`, `auth/`, `data/`, `node_modules/` e i PDF locali.

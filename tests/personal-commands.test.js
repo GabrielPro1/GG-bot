@@ -14,7 +14,7 @@ function writeCommand(directory, fileName, name) {
 
 describe('comandi del branch personal', () => {
     it('include i comandi essenziali', () => {
-        for (const name of ['menu', 'sezione', 'ping', 'libri', 'mandapag', 'dashboard', 'nuke']) {
+        for (const name of ['menu', 'sezione', 'ping', 'libri', 'mandapag', 'dashboard', 'nuke', 'mc']) {
             assert.ok(PERSONAL_COMMANDS.has(name), `manca ${name}`);
         }
     });
