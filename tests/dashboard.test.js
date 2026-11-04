@@ -321,6 +321,53 @@ describe('Dashboard web', () => {
         assert.equal(service.getWebInfo().authRequired, true);
     });
 
+    it('accetta anche una password più corta di 8 caratteri', async () => {
+        const service = {
+            getSnapshot: async () => makeSnapshot(),
+            setWebInfo(info) {
+                this.webInfo = { ...info };
+            },
+            getWebInfo() {
+                return { ...this.webInfo };
+            },
+        };
+        running = await startDashboardServer({
+            service,
+            token: 'cinque',
+            host: '127.0.0.1',
+            port: 0,
+            logger: logger(),
+        });
+        assert.ok(running);
+        const unauthorized = await fetch(`${running.url}/api/stats`);
+        assert.equal(unauthorized.status, 401);
+        const authorized = await fetch(`${running.url}/api/stats`, {
+            headers: { Authorization: 'Bearer cinque' },
+        });
+        assert.equal(authorized.status, 200);
+    });
+
+    it('tratta una password di soli spazi come non impostata', async () => {
+        const service = {
+            getSnapshot: async () => makeSnapshot(),
+            setWebInfo(info) {
+                this.webInfo = { ...info };
+            },
+            getWebInfo() {
+                return { ...this.webInfo };
+            },
+        };
+        const result = await startDashboardServer({
+            service,
+            token: '   ',
+            host: '127.0.0.1',
+            port: 0,
+            logger: logger(),
+        });
+        assert.equal(result, null);
+        assert.equal(service.getWebInfo().reason, 'token_required');
+    });
+
     it('rifiuta di partire senza password anche su loopback', async () => {
         const service = {
             getSnapshot: async () => makeSnapshot(),
