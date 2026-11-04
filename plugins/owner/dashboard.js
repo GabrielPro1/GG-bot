@@ -19,13 +19,13 @@ function webLines(web) {
         return [
             `🌐 Dashboard web: ✅ attiva`,
             `🔗 ${web.url}`,
-            web.authRequired ? '🔒 Accesso protetto da token' : '⚠️ Accesso solo locale (senza token)',
+            web.authRequired ? '🔒 Accesso protetto da password' : '⚠️ Accesso solo locale (senza password)',
         ];
     }
     if (web?.reason === 'token_required') {
         return [
             '🌐 Dashboard web: ⚠️ disattivata',
-            '🔑 Imposta DASHBOARD_TOKEN per l\'accesso in LAN',
+            '🔑 Imposta DASHBOARD_PASSWORD per accedere',
         ];
     }
     if (web?.reason === 'listen_failed') {

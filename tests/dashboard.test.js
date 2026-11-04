@@ -224,21 +224,21 @@ describe('/dashboard', () => {
         assert.match(output, /Database: 1,0 MB/);
         assert.match(output, /Dashboard web: ✅ attiva/);
         assert.match(output, /http:\/\/127\.0\.0\.1:3000/);
-        assert.match(output, /protetto da token/);
+        assert.match(output, /protetto da password/);
     });
 
-    it('non espone mai il token nel messaggio', async () => {
+    it('non espone mai la password nel messaggio', async () => {
         const output = await runDashboardCommand(makeDashboardView(makeSnapshot()));
-        assert.doesNotMatch(output, /secret-token|DASHBOARD_TOKEN=/);
+        assert.doesNotMatch(output, /secret-password|DASHBOARD_PASSWORD=/);
     });
 
-    it('spiega quando la dashboard web è disattivata per token mancante', async () => {
+    it('spiega quando la dashboard web è disattivata per password mancante', async () => {
         const snapshot = makeSnapshot({
             web: { enabled: false, authRequired: false, url: null, reason: 'token_required' },
         });
         const output = await runDashboardCommand(makeDashboardView(snapshot));
         assert.match(output, /Dashboard web: ⚠️ disattivata/);
-        assert.match(output, /DASHBOARD_TOKEN/);
+        assert.match(output, /DASHBOARD_PASSWORD/);
     });
 
     it('gestisce un disco non disponibile senza interrompere il comando', async () => {
@@ -280,7 +280,7 @@ describe('Dashboard web', () => {
         return { log() { }, warn() { }, error() { } };
     }
 
-    it('serve la pagina e protegge le API con il token', async () => {
+    it('serve la pagina e protegge le API con la password', async () => {
         const service = {
             webInfo: {},
             getSnapshot: async () => makeSnapshot(),
@@ -321,7 +321,7 @@ describe('Dashboard web', () => {
         assert.equal(service.getWebInfo().authRequired, true);
     });
 
-    it('accetta il loopback senza token', async () => {
+    it('rifiuta di partire senza password anche su loopback', async () => {
         const service = {
             getSnapshot: async () => makeSnapshot(),
             setWebInfo(info) {
@@ -331,20 +331,19 @@ describe('Dashboard web', () => {
                 return { ...this.webInfo };
             },
         };
-        running = await startDashboardServer({
+        const result = await startDashboardServer({
             service,
             token: '',
             host: '127.0.0.1',
             port: 0,
             logger: logger(),
         });
-        assert.ok(running);
-        const response = await fetch(`${running.url}/api/stats`);
-        assert.equal(response.status, 200);
-        assert.equal(service.getWebInfo().authRequired, false);
+        assert.equal(result, null);
+        assert.equal(service.getWebInfo().enabled, false);
+        assert.equal(service.getWebInfo().reason, 'token_required');
     });
 
-    it('rifiuta di esporsi in LAN senza token', async () => {
+    it('rifiuta di esporsi in LAN senza password', async () => {
         const service = {
             getSnapshot: async () => makeSnapshot(),
             setWebInfo(info) {
