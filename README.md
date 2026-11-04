@@ -165,7 +165,7 @@ DASHBOARD_PORT=3000
 DASHBOARD_HOST=127.0.0.1
 ```
 
-La password è obbligatoria e deve avere almeno 8 caratteri: senza `DASHBOARD_PASSWORD` la dashboard non viene avviata.
+La password è obbligatoria: senza `DASHBOARD_PASSWORD` la dashboard non viene avviata.
 
 Configurazione predefinita:
 
