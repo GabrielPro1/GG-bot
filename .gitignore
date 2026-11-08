@@ -14,9 +14,8 @@ auth/
 # NEVER commit anything under data/.
 data/
 
-# School PDF library: book files are local content, never commit them.
-libri/*.pdf
-libri/*.PDF
+# Local PDF library content (the book commands are only on the personal branch)
+libri/
 
 # Backups
 backups/

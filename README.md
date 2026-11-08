@@ -213,10 +213,6 @@ Il valore predefinito è `silent`.
 
 ### Altre impostazioni
 
-Il file `.env.example` contiene anche parametri opzionali per la gestione e il rendering dei PDF.
-
-Puoi lasciarli ai valori predefiniti e modificarli successivamente, se necessario.
-
 **Importante:** non condividere il file `.env` e non caricarlo su GitHub. Contiene token e informazioni private.
 
 ---
@@ -324,7 +320,6 @@ Durante l'esecuzione il bot crea e utilizza alcune cartelle:
 | `auth/` | Credenziali e sessioni WhatsApp |
 | `data/` | Database SQLite e dati persistenti |
 | `node_modules/` | Dipendenze Node.js |
-| `libri/` | Libreria locale dei PDF |
 | `logs/` | Eventuali file di log |
 
 Il database principale si trova in:
@@ -387,7 +382,7 @@ Alcune precauzioni importanti:
 - Non esporre la dashboard direttamente su Internet.
 - Mantieni aggiornati Node.js e le dipendenze.
 
-Il repository include un `.gitignore` che esclude già file e cartelle sensibili, tra cui `.env`, `auth/`, `data/`, `node_modules/` e i PDF locali.
+Il repository include un `.gitignore` che esclude già file e cartelle sensibili, tra cui `.env`, `auth/`, `data/` e `node_modules/`.
 
 Prima di ogni aggiornamento importante, esegui un backup dei dati.
 
