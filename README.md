@@ -186,7 +186,7 @@ Non esporre direttamente la dashboard su Internet. Per l'accesso remoto utilizza
 
 #### Minecraft Java (RCON)
 
-Il comando `/mc` invia un comando alla console del server Minecraft Java tramite RCON. È riservato agli owner e richiede che bot e server siano sulla stessa macchina (o sulla stessa rete fidata).
+Il comando `/mc` invia un comando alla console del server Minecraft Java tramite RCON. `/mc list` è disponibile per tutti; tutti gli altri sottocomandi sono riservati agli owner e richiedono che bot e server siano sulla stessa macchina (o sulla stessa rete fidata).
 
 Nel `server.properties` del server abilita RCON:
 
@@ -415,7 +415,7 @@ Alcune precauzioni importanti:
 - Non caricare il file `.env` su GitHub.
 - Non condividere token Telegram o chiavi API Gemini.
 - Non esporre la dashboard direttamente su Internet.
-- Non esporre RCON su Internet: `/mc` è riservato agli owner e può eseguire qualsiasi comando della console.
+- Non esporre RCON su Internet: `/mc` (tranne `/mc list`) è riservato agli owner e può eseguire qualsiasi comando della console.
 - Mantieni aggiornati Node.js e le dipendenze.
 
 Il repository include un `.gitignore` che esclude già file e cartelle sensibili, tra cui `.env`, `auth/`, `data/`, `node_modules/` e i PDF locali.

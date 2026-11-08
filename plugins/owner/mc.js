@@ -38,7 +38,7 @@ function truncate(text) {
     return `${text.slice(0, MAX_REPLY_LENGTH - 1)}…`;
 }
 
-export async function executeMcCommand({ args = [], reply, rcon = DEFAULT_RCON } = {}) {
+export async function executeMcCommand({ args = [], reply, rcon = DEFAULT_RCON, isOwner = false } = {}) {
     const raw = Array.isArray(args) ? args.join(' ') : String(args ?? '');
     let command;
     try {
@@ -46,6 +46,12 @@ export async function executeMcCommand({ args = [], reply, rcon = DEFAULT_RCON }
     }
     catch (error) {
         await reply(errorMessage(error));
+        return;
+    }
+
+    const [subcommand] = command.toLowerCase().split(/\s+/);
+    if (subcommand !== 'list' && !isOwner) {
+        await reply('🔒 Solo gli owner possono usare /mc con comandi diversi da /mc list.');
         return;
     }
 
@@ -86,7 +92,7 @@ export default {
     name: 'mc',
     category: 'owner',
     emoji: '🎮',
-    ownerOnly: true,
-    description: 'Invia un comando alla console del server Minecraft (RCON)',
+    ownerOnly: false,
+    description: 'Console Minecraft via RCON (/mc list è pubblico)',
     execute: executeMcCommand,
 };
