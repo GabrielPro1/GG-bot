@@ -2,8 +2,8 @@
 # Ripara il binding nativo di @napi-rs/canvas dentro il proot.
 #
 # Serve perché il node_modules installato su Windows non contiene il binding
-# Linux ARM64 (@napi-rs/canvas-linux-arm64-gnu). Senza di esso il render PDF
-# fallisce con "Cannot find native binding".
+# Linux ARM64 (@napi-rs/canvas-linux-arm64-gnu). Senza di esso il rendering
+# delle immagini fallisce con "Cannot find native binding".
 #
 # Va eseguito dentro il proot Ubuntu (vedi TERMUX.md), non in Termux.
 #

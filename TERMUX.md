@@ -134,7 +134,7 @@ pm2 logs gg-bot
 pm2 restart gg-bot
 ```
 
-## Binding nativo mancante (PDF e immagini)
+## Binding nativo mancante (immagini)
 
 Sintomo:
 
@@ -142,7 +142,6 @@ Sintomo:
 Cannot find native binding
 ```
 
-oppure `/mandapag` risponde con "motore di rendering non disponibile".
 Manca `@napi-rs/canvas-linux-arm64-gnu`.
 
 Dentro il proot:
@@ -167,31 +166,6 @@ Verifica:
 node -e "import('@napi-rs/canvas').then(() => console.log('canvas ok'))"
 ```
 
-## Verifica end-to-end
-
-Dentro il proot, dalla cartella del progetto:
-
-```bash
-node -e "
-import('./lib/pdf/sender.js').then(async ({ PdfSender }) => {
-  const { getPdfConfig } = await import('./lib/pdf/pdf-library.config.js');
-  const sender = new PdfSender(getPdfConfig());
-  const sent = [];
-  const res = await sender.sendPageRange({
-    bookQuery: 'libro di prova',
-    spec: { start: 1, end: 1 },
-    sendImage: async (buffer) => sent.push(buffer.length),
-  });
-  console.log(res, sent);
-});
-"
-```
-
-Risultato atteso: `ok: true`, `sentPages: [1]`, `failedPages: []` e un JPEG
-di alcune decine di KB. Il comando presume che `libri/libro-di-prova.pdf`
-esista: se non c'è, copia un PDF qualsiasi nella cartella `libri/` e cambia
-`bookQuery`.
-
 ## Caveat
 
 - Il bind mount vale per la sessione: se lanci `node index.js` a mano da una
@@ -204,8 +178,6 @@ esista: se non c'è, copia un PDF qualsiasi nella cartella `libri/` e cambia
 - `/root/GG-Bot-node_modules` è dentro la rootfs del proot: se reinstalli la
   distro sparisce, ma si ricrea con `npm install`. Il progetto e i dati
   restano su `/sdcard`.
-- La cache PDF vive in `data/pdf-cache` (gitignored) e va bene anche su
-  `/sdcard`, perché non viene eseguita.
 
 ## File di questo branch
 
