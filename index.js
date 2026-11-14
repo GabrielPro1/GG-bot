@@ -2,7 +2,6 @@ import 'dotenv/config';
 import { connectWhatsApp } from './lib/whatsapp/connection.js';
 import { SessionManager } from './lib/whatsapp/session-manager.js';
 import { registerMessageLogger } from './handler.js';
-import { startTelegramBot } from './lib/telegram/bot.js';
 import { IdentityService } from './lib/identity/identity.service.js';
 import { RpgService } from './lib/rpg/rpg.service.js';
 import { PlayerRepository } from './lib/rpg/player.repository.js';
@@ -61,14 +60,6 @@ try {
 }
 catch (error) {
     console.error('[dashboard] failed to start web dashboard:', error);
-}
-try {
-    void startTelegramBot(sessionManager).catch((error) => {
-        console.error('[telegram] failed to start Telegram bot:', error);
-    });
-}
-catch (error) {
-    console.error('Failed to start Telegram bot:', error);
 }
 try {
     await connectWhatsApp({ identityService, dispatcher, ai: aiService, dashboard: dashboardService });

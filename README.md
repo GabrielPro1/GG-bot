@@ -1,6 +1,6 @@
 # GG-bot
 
-Bot WhatsApp basato su [Baileys](https://github.com/WhiskeySockets/Baileys), con integrazione Telegram opzionale, dashboard web, database SQLite e funzionalità AI opzionali tramite Google Gemini.
+Bot WhatsApp basato su [Baileys](https://github.com/WhiskeySockets/Baileys), con dashboard web, database SQLite e funzionalità AI opzionali tramite Google Gemini.
 
 Questa guida descrive l'installazione e la configurazione su **Windows 10/11**, utilizzando il branch `windows` del repository.
 
@@ -130,16 +130,6 @@ notepad .env
 Il file contiene le variabili di configurazione del bot.
 
 ### Variabili principali
-
-#### Telegram
-
-```env
-TELEGRAM_BOT_TOKEN=
-```
-
-Inserisci il token del bot Telegram se desideri attivare l'integrazione Telegram.
-
-Se lasci il campo vuoto, il bot Telegram rimane disattivato. Il collegamento WhatsApp continua a funzionare.
 
 #### Proprietari WhatsApp
 
@@ -413,7 +403,7 @@ Alcune precauzioni importanti:
 - Non pubblicare la cartella `auth/`.
 - Non pubblicare la cartella `data/`.
 - Non caricare il file `.env` su GitHub.
-- Non condividere token Telegram o chiavi API Gemini.
+- Non condividere le chiavi API Gemini.
 - Non esporre la dashboard direttamente su Internet.
 - Non esporre RCON su Internet: `/mc` (tranne `/mc list`) è riservato agli owner e può eseguire qualsiasi comando della console.
 - Mantieni aggiornati Node.js e le dipendenze.

@@ -5,7 +5,6 @@ import { mkdtemp, mkdir, writeFile, stat, rm } from 'node:fs/promises';
 import os from 'node:os';
 import path from 'node:path';
 import { SessionManager } from '../lib/whatsapp/session-manager.js';
-import { TelegramLinker } from '../lib/telegram/link.js';
 function makeStubFactory() {
     const factory = async () => {
         const stub = {
@@ -125,30 +124,4 @@ test('already-disconnected session with leftover files is still deleted', async 
         await rm(authRoot, { recursive: true, force: true });
     }
 });
-test('TelegramLinker.deleteSession clears linking state', async () => {
-    const authRoot = await tempAuthDir();
-    try {
-        await seedAuthFiles(authRoot, 'dave');
-        const manager = new SessionManager({ authRoot, socketFactory: makeStubFactory() });
-        const linker = new TelegramLinker({
-            sessionManager: manager,
-            qrToPng: async (qr) => Buffer.from(qr),
-        });
-        const { chat } = makeChat();
-        await linker.start('987', chat);
-        assert.equal(linker.isLinking('987'), true);
-        const deleted = await linker.deleteSession('987');
-        assert.equal(deleted, true);
-        assert.equal(linker.isLinking('987'), false);
-    }
-    finally {
-        await rm(authRoot, { recursive: true, force: true });
-    }
-});
-function makeChat() {
-    const chat = {
-        sendText: async () => undefined,
-        sendQr: async () => undefined,
-    };
-    return { chat };
-}
+
