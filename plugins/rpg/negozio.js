@@ -1,6 +1,6 @@
 import { getAllItems } from '../../lib/rpg/items/catalog.js';
 import { getRarityInfo } from '../../lib/rpg/items/rarity.js';
-const SIGNATURE = '╰━━━━━━━━ ✨ GG BOT ✨ ━━━━━━━━╯';
+const SIGNATURE = '╰━━━━ ✨ GG BOT ✨ ━━━━╯';
 /** Oggetti acquistabili. Prezzo mancante o zero significa "non acquistabile". */
 function isPurchasable(item) {
     return item.price > 0;
@@ -33,9 +33,9 @@ export default {
             ].join('\n');
         });
         await reply([
-            '╭━━━━━━━━━━━━━━━━━━━━━━━━━━╮',
+            '╭━━━━╮',
             '┃    🛒 NEGOZIO RPG    ┃',
-            '╰━━━━━━━━━━━━━━━━━━━━━━━━━━╯',
+            '╰━━━━╯',
             '',
             ...itemBlocks.flatMap((block, index) => (index === 0 ? [block] : ['', block])),
             '',

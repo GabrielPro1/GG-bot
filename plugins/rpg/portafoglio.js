@@ -1,4 +1,4 @@
-const SIGNATURE = '╰━━━━━━━━ ✨ GG BOT ✨ ━━━━━━━━╯';
+const SIGNATURE = '╰━━━━ ✨ GG BOT ✨ ━━━━╯';
 export default {
     name: 'portafoglio',
     category: 'rpg',
@@ -8,9 +8,9 @@ export default {
         const wallet = rpg.getWalletBalance(identity.userId);
         const bank = rpg.getBankBalance(identity.userId);
         await reply([
-            '╭━━━━━━━━━━━━━━━━━━━━━━━━━━╮',
+            '╭━━━━╮',
             '┃   💰 PORTAFOGLIO   ┃',
-            '╰━━━━━━━━━━━━━━━━━━━━━━━━━━╯',
+            '╰━━━━╯',
             '',
             `👛 Contanti: 🪙 ${wallet}`,
             `🏦 Banca: 🪙 ${bank}`,

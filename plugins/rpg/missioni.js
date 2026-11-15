@@ -1,4 +1,4 @@
-const SIGNATURE = '╰━━━━━━━━ ✨ GG BOT ✨ ━━━━━━━━╯';
+const SIGNATURE = '╰━━━━ ✨ GG BOT ✨ ━━━━╯';
 function renderProgressBar(progress, target) {
     const segments = 5;
     const filled = Math.min(segments, Math.floor((progress / target) * segments + 0.0001));
@@ -20,9 +20,9 @@ function renderMission(mission) {
 }
 function renderMissionsBox(missions) {
     return [
-        '╭━━━━━━━━━━━━━━━━━━━━━━━━━━╮',
+        '╭━━━━╮',
         '┃    📜 MISSIONI RPG    ┃',
-        '╰━━━━━━━━━━━━━━━━━━━━━━━━━━╯',
+        '╰━━━━╯',
         '',
         ...missions.flatMap((mission, index) => index === 0 ? renderMission(mission) : ['', ...renderMission(mission)]),
         '',
@@ -34,9 +34,9 @@ function renderMissionsBox(missions) {
 function renderClaimResult(result) {
     if (result.ok) {
         return [
-            '╭━━━━━━━━━━━━━━━━━━━━━━━━━━╮',
+            '╭━━━━╮',
             '┃     🎉 RISCATTO     ┃',
-            '╰━━━━━━━━━━━━━━━━━━━━━━━━━━╯',
+            '╰━━━━╯',
             '',
             '✅ Missione completata!',
             '',
@@ -72,9 +72,9 @@ function renderClaimResult(result) {
     };
     const lines = messages[result.reason] ?? ['❓ ERRORE', '❌ Operazione non riuscita.'];
     return [
-        '╭━━━━━━━━━━━━━━━━━━━━━━━━━━╮',
+        '╭━━━━╮',
         `┃   ${lines[0]}   ┃`,
-        '╰━━━━━━━━━━━━━━━━━━━━━━━━━━╯',
+        '╰━━━━╯',
         '',
         ...lines.slice(1),
         '',
@@ -91,9 +91,9 @@ export default {
             const missionId = args.slice(1).join(' ').trim();
             if (!missionId) {
                 await reply([
-                    '╭━━━━━━━━━━━━━━━━━━━━━━━━━━╮',
+                    '╭━━━━╮',
                     '┃     📜 MISSIONI RPG     ┃',
-                    '╰━━━━━━━━━━━━━━━━━━━━━━━━━━╯',
+                    '╰━━━━╯',
                     '',
                     '⚠️ Devi indicare la missione da riscattare.',
                     '',

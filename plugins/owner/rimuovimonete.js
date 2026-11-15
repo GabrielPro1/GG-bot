@@ -1,9 +1,9 @@
 import { resolveTargetUser } from '../../lib/target.js';
-const SIGNATURE = '╰━━━━━━━━ ✨ GG BOT ✨ ━━━━━━━━╯';
+const SIGNATURE = '╰━━━━ ✨ GG BOT ✨ ━━━━╯';
 const USAGE = [
-    '╭━━━━━━━━━━━━━━━━━━━━━━━━━━╮',
+    '╭━━━━━━╮',
     '┃      👑 RIMUOVI MONETE       ┃',
-    '╰━━━━━━━━━━━━━━━━━━━━━━━━━━╯',
+    '╰━━━━━━╯',
     '',
     '⚠️ Usa:',
     '',
@@ -17,9 +17,9 @@ const USAGE = [
 ].join('\n');
 function renderError(title, message) {
     return [
-        '╭━━━━━━━━━━━━━━━━━━━━━━━━━━╮',
+        '╭━━━━━━╮',
         `┃   ${title}   ┃`,
-        '╰━━━━━━━━━━━━━━━━━━━━━━━━━━╯',
+        '╰━━━━━━╯',
         '',
         message,
         '',
@@ -68,9 +68,9 @@ export default {
         const wallet = rpg.getWalletBalance(targetIdentity.userId);
         const display = `@${targetIdentity.username ?? targetIdentity.lid ?? targetIdentity.pn ?? 'giocatore'}`;
         await reply([
-            '╭━━━━━━━━━━━━━━━━━━━━━━━━━━╮',
+            '╭━━━━━━╮',
             '┃    👑 MONETE RIMOSSE      ┃',
-            '╰━━━━━━━━━━━━━━━━━━━━━━━━━━╯',
+            '╰━━━━━━╯',
             '',
             `💰 Rimossi ${amount} monete a ${display}.`,
             `Saldo attuale: ${wallet}`,

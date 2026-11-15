@@ -3,6 +3,8 @@ import { disabledAiView } from './lib/ai/ai.service.js';
 import { handleAiModeMessage } from './lib/ai/ai-mode.js';
 import { loadMenuImage } from './lib/commands/menu-images.js';
 import { renderSectionList } from './lib/commands/menu-text.js';
+import { pendingDeposito, parseDepositInput, clearPending } from './lib/commands/deposit-pending.js';
+import { formatError, formatResult } from './plugins/rpg/deposita.js';
 const TEXT_PREVIEW_MAX_LENGTH = 100;
 const IGNORED_JID_SUFFIXES = ['@newsletter', '@broadcast'];
 /**
@@ -266,13 +268,14 @@ export function registerMessageLogger(sock, identityService, dispatcher, ai = di
             if (!text) {
                 return;
             }
-            await dispatcher
+            const reply = (replyText) => sock.sendMessage(chatJid, { text: replyText }).then(() => undefined);
+            const handled = await dispatcher
                 .handle(text, {
                 identity,
                 remoteJid: chatJid,
                 remoteJidAlt: message.key.remoteJidAlt ?? chatJid,
                 sock,
-                reply: (replyText) => sock.sendMessage(chatJid, { text: replyText }).then(() => undefined),
+                reply,
                 sendImage: (imageBuffer, caption, mimetype = 'image/jpeg') => sock
                     .sendMessage(chatJid, { image: imageBuffer, caption, mimetype })
                     .then(() => undefined),
@@ -449,6 +452,28 @@ export function registerMessageLogger(sock, identityService, dispatcher, ai = di
                 mentions: resolveMentions(identityService, message.message),
                 quoted: resolveQuoted(identityService, message.message),
             });
+            if (!handled && pendingDeposito.has(identity.userId)) {
+                const player = dispatcher.rpg.getOrCreatePlayer(identity.userId);
+                const money = player.walletCoins;
+                const parsed = parseDepositInput(text, money);
+                if (parsed.error) {
+                    await reply(formatError(parsed.error));
+                    return;
+                }
+                const deposito = parsed.amount;
+                if (deposito > money) {
+                    await reply(formatError('𝐍𝐨𝐧 𝐡𝐚𝐢 𝐚𝐛𝐛𝐚𝐬𝐭𝐚𝐧𝐳𝐚 *XP333* 𝐧𝐞𝐥 𝐩𝐨𝐫𝐭𝐚𝐟𝐨𝐠𝐥𝐢𝐨 👛'));
+                    return;
+                }
+                const result = dispatcher.rpg.deposit(identity.userId, deposito);
+                if (!result.ok) {
+                    await reply(formatError('⚠️ Quantità non valida.'));
+                    return;
+                }
+                clearPending(identity.userId);
+                await reply(formatResult(deposito, result.walletCoins, result.bankCoins));
+                return;
+            }
         }
         catch (error) {
             console.error('Failed to process message:', error);

@@ -1,9 +1,9 @@
 import { resolveTargetUser } from '../../lib/target.js';
-const SIGNATURE = '╰━━━━━━━━ ✨ GG BOT ✨ ━━━━━━━━╯';
+const SIGNATURE = '╰━━━━ ✨ GG BOT ✨ ━━━━╯';
 const USAGE = [
-    '╭━━━━━━━━━━━━━━━━━━━━━━━━━━╮',
+    '╭━━━━╮',
     '┃      ⚔️ DUELLO PvP      ┃',
-    '╰━━━━━━━━━━━━━━━━━━━━━━━━━━╯',
+    '╰━━━━╯',
     '',
     '⚠️ Devi indicare un avversario:',
     '',
@@ -27,9 +27,9 @@ function formatCooldown(ms) {
 }
 function renderError(title, message) {
     return [
-        '╭━━━━━━━━━━━━━━━━━━━━━━━━━━╮',
+        '╭━━━━╮',
         `┃   ${title}   ┃`,
-        '╰━━━━━━━━━━━━━━━━━━━━━━━━━━╯',
+        '╰━━━━╯',
         '',
         message,
         '',
@@ -71,9 +71,9 @@ function renderCombatOutcome(result, attackerDisplay, defenderDisplay) {
         ? ['💥 Colpo critico!', '']
         : [];
     return [
-        '╭━━━━━━━━━━━━━━━━━━━━━━━━━━╮',
+        '╭━━━━╮',
         '┃      ⚔️ DUELLO PvP      ┃',
-        '╰━━━━━━━━━━━━━━━━━━━━━━━━━━╯',
+        '╰━━━━╯',
         '',
         outcomeTitle,
         '',

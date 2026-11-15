@@ -1,8 +1,8 @@
-const SIGNATURE = '╰━━━━━━━━ ✨ GG BOT ✨ ━━━━━━━━╯';
+const SIGNATURE = '╰━━━━ ✨ GG BOT ✨ ━━━━╯';
 const BOX_TITLE = [
-    '╭━━━━━━━━━━━━━━━━━━━━━━━━━━╮',
+    '╭━━━━╮',
     '┃   🔓 DISEQUIPAGGIA   ┃',
-    '╰━━━━━━━━━━━━━━━━━━━━━━━━━━╯',
+    '╰━━━━╯',
 ];
 function renderFailure(result) {
     switch (result.error) {

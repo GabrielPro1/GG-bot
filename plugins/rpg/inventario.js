@@ -1,6 +1,6 @@
 import { getAllItems } from '../../lib/rpg/items/catalog.js';
 import { getRarityInfo } from '../../lib/rpg/items/rarity.js';
-const SIGNATURE = '╰━━━━━━━━ ✨ GG BOT ✨ ━━━━━━━━╯';
+const SIGNATURE = '╰━━━━ ✨ GG BOT ✨ ━━━━╯';
 export default {
     name: 'inventario',
     category: 'rpg',
@@ -22,9 +22,9 @@ export default {
         });
         if (ownedEntries.length === 0) {
             await reply([
-                '╭━━━━━━━━━━━━━━━━━━━━━━━━━━╮',
+                '╭━━━━╮',
                 '┃    🎒 INVENTARIO    ┃',
-                '╰━━━━━━━━━━━━━━━━━━━━━━━━━━╯',
+                '╰━━━━╯',
                 '',
                 '📦 Il tuo inventario è vuoto.',
                 '',
@@ -36,9 +36,9 @@ export default {
             return;
         }
         await reply([
-            '╭━━━━━━━━━━━━━━━━━━━━━━━━━━╮',
+            '╭━━━━╮',
             '┃    🎒 INVENTARIO    ┃',
-            '╰━━━━━━━━━━━━━━━━━━━━━━━━━━╯',
+            '╰━━━━╯',
             '',
             ...ownedEntries.flatMap((entry, index) => (index === 0 ? [entry] : ['', entry])),
             '',

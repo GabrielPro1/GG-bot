@@ -1,6 +1,6 @@
 import { formatBytes, formatCount, formatDuration, formatPercent } from '../../lib/dashboard/format.js';
 
-const SIGNATURE = '╰━━━━━━━━ ✨ GG BOT ✨ ━━━━━━━━╯';
+const SIGNATURE = '╰━━━━ ✨ GG BOT ✨ ━━━━╯';
 
 function whatsappLabel(state) {
     if (state === 'open')
@@ -39,9 +39,9 @@ function webLines(web) {
 
 function renderError(message) {
     return [
-        '╭━━━━━━━━━━━━━━━━━━━━━━━━━━╮',
+        '╭━━━━━━╮',
         '┃    👑 DASHBOARD OWNER     ┃',
-        '╰━━━━━━━━━━━━━━━━━━━━━━━━━━╯',
+        '╰━━━━━━╯',
         '',
         message,
         '',
@@ -80,9 +80,9 @@ export default {
         const cpu = snapshot.cpu;
 
         const lines = [
-            '╭━━━━━━━━━━━━━━━━━━━━━━━━━━╮',
+            '╭━━━━━━╮',
             '┃    👑 DASHBOARD OWNER     ┃',
-            '╰━━━━━━━━━━━━━━━━━━━━━━━━━━╯',
+            '╰━━━━━━╯',
             '',
             '🤖 *BOT*',
             `⏱️ Uptime: ${formatDuration(bot.uptimeSeconds)}`,

@@ -1,6 +1,6 @@
 import { findItemById } from '../../lib/rpg/items/catalog.js';
 import { getRarityInfo } from '../../lib/rpg/items/rarity.js';
-const SIGNATURE = '╰━━━━━━━━ ✨ GG BOT ✨ ━━━━━━━━╯';
+const SIGNATURE = '╰━━━━ ✨ GG BOT ✨ ━━━━╯';
 function formatLootLine(entry) {
     const item = findItemById(entry.itemId);
     if (!item) {
@@ -29,9 +29,9 @@ function formatCooldown(ms) {
 }
 function renderError(title, message) {
     return [
-        '╭━━━━━━━━━━━━━━━━━━━━━━━━━━╮',
+        '╭━━━━╮',
         `┃   ${title}   ┃`,
-        '╰━━━━━━━━━━━━━━━━━━━━━━━━━━╯',
+        '╰━━━━╯',
         '',
         message,
         '',
@@ -56,9 +56,9 @@ const FAILURE_RENDERERS = {
 };
 function renderHuntOutcome(result) {
     const header = [
-        '╭━━━━━━━━━━━━━━━━━━━━━━━━━━╮',
+        '╭━━━━╮',
         '┃      🏹 CACCIA PvE      ┃',
-        '╰━━━━━━━━━━━━━━━━━━━━━━━━━━╯',
+        '╰━━━━╯',
         '',
         `${result.monsterEmoji} Hai incontrato:`,
         `   ${result.monsterName}`,

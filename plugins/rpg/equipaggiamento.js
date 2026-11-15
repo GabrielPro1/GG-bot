@@ -1,6 +1,6 @@
 import { findItemById } from '../../lib/rpg/items/catalog.js';
 import { getRarityInfo } from '../../lib/rpg/items/rarity.js';
-const SIGNATURE = '╰━━━━━━━━ ✨ GG BOT ✨ ━━━━━━━━╯';
+const SIGNATURE = '╰━━━━ ✨ GG BOT ✨ ━━━━╯';
 const SLOT_LABELS = {
     weapon: '⚔️ Arma',
     armor: '🛡️ Armatura',
@@ -50,9 +50,9 @@ export default {
             bonusLines.push('Nessun bonus attivo');
         }
         await reply([
-            '╭━━━━━━━━━━━━━━━━━━━━━━━━━━╮',
+            '╭━━━━╮',
             '┃  🎒 EQUIPAGGIAMENTO  ┃',
-            '╰━━━━━━━━━━━━━━━━━━━━━━━━━━╯',
+            '╰━━━━╯',
             '',
             ...slotLines,
             '',

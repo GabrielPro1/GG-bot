@@ -1,9 +1,9 @@
-const SIGNATURE = '╰━━━━━━━━ ✨ GG BOT ✨ ━━━━━━━━╯';
+const SIGNATURE = '╰━━━━ ✨ GG BOT ✨ ━━━━╯';
 function usage() {
     return [
-        '╭━━━━━━━━━━━━━━━━━━━━━━━━━━╮',
+        '╭━━━━╮',
         '┃      💸 PRELEVA      ┃',
-        '╰━━━━━━━━━━━━━━━━━━━━━━━━━━╯',
+        '╰━━━━╯',
         '',
         '⚠️ Quantità mancante.',
         '',
@@ -32,9 +32,9 @@ export default {
         const result = rpg.withdraw(identity.userId, Number(raw));
         if (!result.ok) {
             await reply([
-                '╭━━━━━━━━━━━━━━━━━━━━━━━━━━╮',
+                '╭━━━━╮',
                 '┃      💸 PRELEVA      ┃',
-                '╰━━━━━━━━━━━━━━━━━━━━━━━━━━╯',
+                '╰━━━━╯',
                 '',
                 INVALID_AMOUNT_MESSAGES[result.error],
                 '',
@@ -43,9 +43,9 @@ export default {
             return;
         }
         await reply([
-            '╭━━━━━━━━━━━━━━━━━━━━━━━━━━╮',
+            '╭━━━━╮',
             '┃      💸 PRELEVA      ┃',
-            '╰━━━━━━━━━━━━━━━━━━━━━━━━━━╯',
+            '╰━━━━╯',
             '',
             '✅ Prelievo riuscito!',
             '',

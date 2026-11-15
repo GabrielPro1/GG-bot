@@ -1,4 +1,4 @@
-const SIGNATURE = '╰━━━━━━━━ ✨ GG BOT ✨ ━━━━━━━━╯';
+const SIGNATURE = '╰━━━━ ✨ GG BOT ✨ ━━━━╯';
 function formatRemainingTime(ms) {
     if (ms < 60_000)
         return 'meno di 1m';
@@ -16,9 +16,9 @@ export default {
         const result = rpg.claimDaily(identity.userId);
         if (!result.claimed) {
             await reply([
-                '╭━━━━━━━━━━━━━━━━━━━━━━━━━━╮',
+                '╭━━━━╮',
                 '┃    ⏰ GIORNALIERO    ┃',
-                '╰━━━━━━━━━━━━━━━━━━━━━━━━━━╯',
+                '╰━━━━╯',
                 '',
                 '😴 Hai già riscosso la ricompensa',
                 '   di oggi!',
@@ -31,10 +31,10 @@ export default {
             return;
         }
         await reply([
-            '╭━━━━━━━━━━━━━━━━━━━━━━━━━━╮',
+            '╭━━━━╮',
             '┃     🎁 RICOMPENSA     ┃',
             '┃       GIORNALIERA       ┃',
-            '╰━━━━━━━━━━━━━━━━━━━━━━━━━━╯',
+            '╰━━━━╯',
             '',
             '🎉 Ricompensa riscattata!',
             '',

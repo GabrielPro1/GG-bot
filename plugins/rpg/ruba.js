@@ -1,9 +1,9 @@
 import { resolveTargetUser } from '../../lib/target.js';
-const SIGNATURE = '╰━━━━━━━━ ✨ GG BOT ✨ ━━━━━━━━╯';
+const SIGNATURE = '╰━━━━ ✨ GG BOT ✨ ━━━━╯';
 const USAGE = [
-    '╭━━━━━━━━━━━━━━━━━━━━━━━━━━╮',
+    '╭━━━━╮',
     '┃       🥷 RAPINA       ┃',
-    '╰━━━━━━━━━━━━━━━━━━━━━━━━━━╯',
+    '╰━━━━╯',
     '',
     '⚠️ Devi indicare una vittima.',
     '',
@@ -25,9 +25,9 @@ function formatCooldown(ms) {
 }
 function renderVictimError(title, message) {
     return [
-        '╭━━━━━━━━━━━━━━━━━━━━━━━━━━╮',
+        '╭━━━━╮',
         `┃   ${title}   ┃`,
-        '╰━━━━━━━━━━━━━━━━━━━━━━━━━━╯',
+        '╰━━━━╯',
         '',
         message,
         '',
@@ -38,9 +38,9 @@ function renderRobResult(result, victimDisplay) {
     switch (result.outcome) {
         case 'success':
             return [
-                '╭━━━━━━━━━━━━━━━━━━━━━━━━━━╮',
+                '╭━━━━╮',
                 '┃       🥷 RAPINA       ┃',
-                '╰━━━━━━━━━━━━━━━━━━━━━━━━━━╯',
+                '╰━━━━╯',
                 '',
                 `🎯 Vittima: ${victimDisplay}`,
                 '',
@@ -55,9 +55,9 @@ function renderRobResult(result, victimDisplay) {
             ].join('\n');
         case 'jailed':
             return [
-                '╭━━━━━━━━━━━━━━━━━━━━━━━━━━╮',
+                '╭━━━━╮',
                 '┃      🚔 ARRESTATO      ┃',
-                '╰━━━━━━━━━━━━━━━━━━━━━━━━━━╯',
+                '╰━━━━╯',
                 '',
                 `🎯 Vittima: ${victimDisplay}`,
                 '',

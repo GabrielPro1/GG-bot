@@ -1,4 +1,4 @@
-const SIGNATURE = '╰━━━━━━━━ ✨ GG BOT ✨ ━━━━━━━━╯';
+const SIGNATURE = '╰━━━━ ✨ GG BOT ✨ ━━━━╯';
 const MEDALS = ['🥇', '🥈', '🥉'];
 const VALID_CATEGORIES = new Set(['livello', 'vittorie', 'ricchezza']);
 function formatLevel(entry) {
@@ -34,9 +34,9 @@ export default {
         const category = rawArg && VALID_CATEGORIES.has(rawArg) ? rawArg : null;
         const nameResolver = (userId) => rpg.getPlayerName(userId);
         const lines = [
-            '╭━━━━━━━━━━━━━━━━━━━━━━━━━━╮',
+            '╭━━━━╮',
             '┃      🏆 CLASSIFICHE      ┃',
-            '╰━━━━━━━━━━━━━━━━━━━━━━━━━━╯',
+            '╰━━━━╯',
         ];
         const showAll = category === null;
         const showLevel = showAll || category === 'livello';

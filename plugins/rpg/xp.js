@@ -1,6 +1,6 @@
 import { totalXpForLevel, xpRequiredForLevel } from '../../lib/rpg/rpg.service.js';
 
-const SIGNATURE = '╰━━━━━━━━ ✨ GG BOT ✨ ━━━━━━━━╯';
+const SIGNATURE = '╰━━━━ ✨ GG BOT ✨ ━━━━╯';
 const BAR_WIDTH = 10;
 
 function renderBar(current, max) {
@@ -21,9 +21,9 @@ export default {
         const totalXp = totalXpForLevel(player.level) + player.xp;
         const rank = rpg.getPlayerRank(identity.userId);
         await reply([
-            '╭━━━━━━━━━━━━━━━━━━━━━━━━━━╮',
+            '╭━━━━╮',
             '┃       🏅 XP GLOBAL       ┃',
-            '╰━━━━━━━━━━━━━━━━━━━━━━━━━━╯',
+            '╰━━━━╯',
             '',
             `⭐ Livello: ${player.level}`,
             `✨ XP: ${player.xp} / ${xpNeeded}`,

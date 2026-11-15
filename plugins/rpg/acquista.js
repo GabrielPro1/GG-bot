@@ -1,8 +1,8 @@
-const SIGNATURE = '╰━━━━━━━━ ✨ GG BOT ✨ ━━━━━━━━╯';
+const SIGNATURE = '╰━━━━ ✨ GG BOT ✨ ━━━━╯';
 const BOX_TITLE = [
-    '╭━━━━━━━━━━━━━━━━━━━━━━━━━━╮',
+    '╭━━━━╮',
     '┃      🛍️ ACQUISTO      ┃',
-    '╰━━━━━━━━━━━━━━━━━━━━━━━━━━╯',
+    '╰━━━━╯',
 ];
 function renderFailure(result) {
     if (result.error === 'unknown_item') {

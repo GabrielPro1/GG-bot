@@ -1,5 +1,5 @@
 import { xpRequiredForLevel } from '../../lib/rpg/rpg.service.js';
-const SIGNATURE = '╰━━━━━━━━ ✨ GG BOT ✨ ━━━━━━━━╯';
+const SIGNATURE = '╰━━━━ ✨ GG BOT ✨ ━━━━╯';
 const BAR_WIDTH = 10;
 function renderBar(current, max) {
     const filled = Math.min(BAR_WIDTH, Math.floor((current / Math.max(max, 1)) * BAR_WIDTH));
@@ -15,9 +15,9 @@ export default {
         const stats = rpg.getStats(identity.userId);
         const xpNeeded = xpRequiredForLevel(player.level);
         await reply([
-            '╭━━━━━━━━━━━━━━━━━━━━━━━━━━╮',
+            '╭━━━━╮',
             '┃    👤 PROFILO RPG    ┃',
-            '╰━━━━━━━━━━━━━━━━━━━━━━━━━━╯',
+            '╰━━━━╯',
             '',
             '👤 Giocatore',
             '',
