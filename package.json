@@ -15,7 +15,7 @@
   "dependencies": {
     "@hapi/boom": "^10.0.1",
     "@napi-rs/canvas": "^0.1.72",
-    "@whiskeysockets/baileys": "7.0.0-rc14",
+    "@whiskeysockets/baileys": "file:../baileys-mio",
     "better-sqlite3": "^13.0.3",
     "dotenv": "^17.4.2",
     "grammy": "^1.46.0",

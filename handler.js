@@ -269,6 +269,9 @@ export function registerMessageLogger(sock, identityService, dispatcher, ai = di
             await dispatcher
                 .handle(text, {
                 identity,
+                remoteJid: chatJid,
+                remoteJidAlt: message.key.remoteJidAlt ?? chatJid,
+                sock,
                 reply: (replyText) => sock.sendMessage(chatJid, { text: replyText }).then(() => undefined),
                 sendImage: (imageBuffer, caption, mimetype = 'image/jpeg') => sock
                     .sendMessage(chatJid, { image: imageBuffer, caption, mimetype })

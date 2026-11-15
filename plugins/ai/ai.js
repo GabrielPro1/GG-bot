@@ -3,9 +3,9 @@ const NOT_CONFIGURED = '⚠️ Il servizio AI non è configurato.';
 const CHAT_NOT_FOUND = '❌ Chat AI non trovata.';
 const PROVIDER_ERROR = '⚠️ Si è verificato un errore durante la richiesta all\'AI. Riprova tra poco.';
 const USAGE = [
-    '╭━━━━━━━━━━━━━━━━━━━━━━━━━━╮',
-    '┃          🤖 AI              ┃',
-    '╰━━━━━━━━━━━━━━━━━━━━━━━━━━╯',
+    '╭━━━━━━━━━━━━━╮',
+    '┃    🤖 AI    ┃',
+    '╰━━━━━━━━━━━━━╯',
     '',
     '⚠️ Usa:',
     '',
@@ -28,7 +28,7 @@ function parseChatId(raw) {
     return value;
 }
 function renderBox(title, lines) {
-    return ['╭━━━━━━━━━━━━━━━━━━━━━━━━━━╮', `┃   ${title}   ┃`, '╰━━━━━━━━━━━━━━━━━━━━━━━━━━╯', '', ...lines, '', SIGNATURE].join('\n');
+    return ['╭━━━━━━━━━━━━━╮', `┃   ${title}   ┃`, '╰━━━━━━━━━━━━━╯', '', ...lines, '', SIGNATURE].join('\n');
 }
 export default {
     name: 'ai',
